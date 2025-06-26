@@ -135,7 +135,7 @@ const minimax = (game: Chess, depth: number, alpha: number, beta: number, isMaxi
     return { score: bestScore, pv: bestPV };
 };
 
-const findBestMove = async (fen: string, depth: number, id: number, isPonder: boolean) => {
+const findBestMove = (fen: string, depth: number, id: number, isPonder: boolean) => {
     const game = new Chess(fen);
     if (game.isGameOver()) {
         self.postMessage({ type: 'final', id, move: null });
@@ -148,7 +148,9 @@ const findBestMove = async (fen: string, depth: number, id: number, isPonder: bo
         return;
     }
     if (moves.length === 1) {
-        self.postMessage({ type: 'progress', id, progress: 100 });
+        if (!isPonder) {
+            self.postMessage({ type: 'progress', id, progress: 100 });
+        }
         self.postMessage({ type: 'interim', id, variation: [moves[0]] });
         self.postMessage({ type: 'final', id, move: moves[0] });
         return;
@@ -190,8 +192,10 @@ const findBestMove = async (fen: string, depth: number, id: number, isPonder: bo
             }
 
             movesAnalyzed++;
-            const overallProgress = Math.round((((currentDepth - 1) / depth) + (movesAnalyzed / moveCount / depth)) * 100);
-            self.postMessage({ type: 'progress', id, progress: overallProgress });
+            if (!isPonder) {
+                const overallProgress = Math.round((((currentDepth - 1) / depth) + (movesAnalyzed / moveCount / depth)) * 100);
+                self.postMessage({ type: 'progress', id, progress: overallProgress });
+            }
         }
         
         if (currentBestMoveForDepth) {
