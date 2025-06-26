@@ -6,7 +6,7 @@ import SidePanel from "@/components/SidePanel";
 import { useChessGame } from "@/hooks/useChessGame";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { Chess } from "chess.js";
+import { Chess, type Move } from "chess.js";
 
 export default function GrandmasterGuiPage() {
   const {
@@ -27,6 +27,7 @@ export default function GrandmasterGuiPage() {
   const [isThinking, setIsThinking] = useState(false);
   const [isPondering, setIsPondering] = useState(false);
   const [consideredMove, setConsideredMove] = useState<string | null>(null);
+  const [visualizedVariation, setVisualizedVariation] = useState<Move[] | null>(null);
 
   const workerRef = useRef<Worker | null>(null);
   const nextRequestId = useRef(0);
@@ -38,24 +39,48 @@ export default function GrandmasterGuiPage() {
     const worker = new Worker(new URL('../lib/engine.worker.ts', import.meta.url));
     workerRef.current = worker;
 
-    worker.onmessage = (e: MessageEvent<{id: number, move: string | null, type: 'interim' | 'final'}>) => {
-        const { id, move, type } = e.data;
+    worker.onmessage = (e: MessageEvent<{id: number, move?: string | null, variation?: string[], type: 'interim' | 'final'}>) => {
+        const { id, move, variation, type } = e.data;
         if (type === 'interim') {
-            setConsideredMove(move);
+            if (variation && variation.length > 0) {
+                const tempGame = new Chess(fen);
+                const moveObjects: Move[] = [];
+                let validVariation = true;
+                for (const moveStr of variation) {
+                    try {
+                        const moveObj = tempGame.move(moveStr, { sloppy: true });
+                        if (moveObj) {
+                            moveObjects.push(moveObj);
+                        } else {
+                            validVariation = false;
+                            break;
+                        }
+                    } catch (err) {
+                        validVariation = false;
+                        break;
+                    }
+                }
+
+                if (validVariation) {
+                    setVisualizedVariation(moveObjects);
+                    setConsideredMove(moveObjects[0]?.san || null);
+                }
+            }
         } else if (type === 'final') {
             const resolve = pendingRequests.current.get(id);
             if (resolve) {
-                resolve(move);
+                resolve(move ?? null);
                 pendingRequests.current.delete(id);
             }
             setConsideredMove(null);
+            setVisualizedVariation(null);
         }
     };
     
     return () => {
         worker.terminate();
     }
-  }, []);
+  }, [fen]); // fen is a dependency now
 
   const requestBestMove = useCallback((fen: string, depth: number): Promise<string | null> => {
     const worker = workerRef.current;
@@ -65,6 +90,7 @@ export default function GrandmasterGuiPage() {
     }
     
     setConsideredMove(null); 
+    setVisualizedVariation(null);
 
     const id = nextRequestId.current++;
     const promise = new Promise<string | null>((resolve) => {
@@ -137,6 +163,7 @@ export default function GrandmasterGuiPage() {
         isViewingHistory={isViewingHistory}
         lastMove={lastMove}
         fen={fen}
+        visualizedVariation={visualizedVariation}
       />
       <SidePanel
         status={status}

@@ -99,49 +99,61 @@ const evaluateBoard = (game: Chess) => {
     return totalEvaluation;
 };
 
-const minimax = (game: Chess, depth: number, alpha: number, beta: number, isMaximizingPlayer: boolean): number => {
+const minimax = (game: Chess, depth: number, alpha: number, beta: number, isMaximizingPlayer: boolean): { score: number, pv: string[] } => {
     if (depth === 0 || game.isGameOver()) {
-        return evaluateBoard(game);
+        return { score: evaluateBoard(game), pv: [] };
     }
 
     const moves = game.moves();
-    // Move ordering: try captures first
     moves.sort((a, b) => (game.get(b.slice(2,4) as any) ? 1 : 0) - (game.get(a.slice(2,4) as any) ? 1 : 0));
 
-    if (isMaximizingPlayer) {
-        let maxEval = -Infinity;
-        for (const move of moves) {
-            game.move(move);
-            const evalNode = minimax(game, depth - 1, alpha, beta, false);
-            game.undo();
-            maxEval = Math.max(maxEval, evalNode);
-            alpha = Math.max(alpha, evalNode);
-            if (beta <= alpha) break;
+    let bestPV: string[] = [];
+    let bestScore = isMaximizingPlayer ? -Infinity : Infinity;
+
+    for (const move of moves) {
+        game.move(move);
+        const result = minimax(game, depth - 1, alpha, beta, !isMaximizingPlayer);
+        game.undo();
+
+        if (isMaximizingPlayer) {
+            if (result.score > bestScore) {
+                bestScore = result.score;
+                bestPV = [move, ...result.pv];
+            }
+            alpha = Math.max(alpha, result.score);
+        } else { // Minimizing player
+            if (result.score < bestScore) {
+                bestScore = result.score;
+                bestPV = [move, ...result.pv];
+            }
+            beta = Math.min(beta, result.score);
         }
-        return maxEval;
-    } else {
-        let minEval = Infinity;
-        for (const move of moves) {
-            game.move(move);
-            const evalNode = minimax(game, depth - 1, alpha, beta, true);
-            game.undo();
-            minEval = Math.min(minEval, evalNode);
-            beta = Math.min(beta, evalNode);
-            if (beta <= alpha) break;
-        }
-        return minEval;
+
+        if (beta <= alpha) break;
     }
+
+    return { score: bestScore, pv: bestPV };
 };
 
-const findBestMove = (fen: string, depth: number, id: number): string | null => {
+
+const findBestMove = (fen: string, depth: number, id: number) => {
     const game = new Chess(fen);
-    if (game.isGameOver()) return null;
+    if (game.isGameOver()) {
+        self.postMessage({ type: 'final', id, move: null });
+        return;
+    }
 
     const moves = game.moves();
-    if (moves.length === 0) return null;
-    if (moves.length === 1) return moves[0];
+    if (moves.length === 0) {
+        self.postMessage({ type: 'final', id, move: null });
+        return;
+    }
+    if (moves.length === 1) {
+        self.postMessage({ type: 'final', id, move: moves[0] });
+        return;
+    }
 
-    let bestMove = null;
+    let bestMove: string | null = null;
     const isMaximizingPlayer = game.turn() === 'w';
     let bestValue = isMaximizingPlayer ? -Infinity : Infinity;
     
@@ -149,25 +161,30 @@ const findBestMove = (fen: string, depth: number, id: number): string | null => 
 
     for (const move of moves) {
         game.move(move);
-        const boardValue = minimax(game, depth - 1, -Infinity, Infinity, !isMaximizingPlayer);
+        const result = minimax(game, depth - 1, -Infinity, Infinity, !isMaximizingPlayer);
         game.undo();
 
+        const boardValue = result.score;
+        
         if (isMaximizingPlayer) {
             if (boardValue > bestValue) {
                 bestValue = boardValue;
                 bestMove = move;
-                self.postMessage({ type: 'interim', id, move: bestMove });
+                const variation = [move, ...result.pv].slice(0, 3);
+                self.postMessage({ type: 'interim', id, variation });
             }
         } else {
             if (boardValue < bestValue) {
                 bestValue = boardValue;
                 bestMove = move;
-                self.postMessage({ type: 'interim', id, move: bestMove });
+                const variation = [move, ...result.pv].slice(0, 3);
+                self.postMessage({ type: 'interim', id, variation });
             }
         }
     }
-
-    return bestMove || moves[Math.floor(Math.random() * moves.length)];
+    
+    const finalMove = bestMove || moves[Math.floor(Math.random() * moves.length)];
+    self.postMessage({ type: 'final', id, move: finalMove });
 };
 
 
@@ -175,6 +192,5 @@ const findBestMove = (fen: string, depth: number, id: number): string | null => 
 
 self.onmessage = (e: MessageEvent<{ id: number, fen: string, depth: number }>) => {
     const { id, fen, depth } = e.data;
-    const move = findBestMove(fen, depth, id);
-    self.postMessage({ type: 'final', id, move });
+    findBestMove(fen, depth, id);
 };

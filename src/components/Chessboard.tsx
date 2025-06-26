@@ -15,6 +15,7 @@ interface ChessboardProps {
   isViewingHistory: boolean;
   lastMove?: Move;
   fen: string;
+  visualizedVariation?: Move[] | null;
 }
 
 const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
@@ -25,7 +26,7 @@ type AnimatedPiece = Piece & {
     to: Square;
 };
 
-export default function Chessboard({ board, onMove, turn, isGameOver, isViewingHistory, lastMove, fen }: ChessboardProps) {
+export default function Chessboard({ board, onMove, turn, isGameOver, isViewingHistory, lastMove, fen, visualizedVariation }: ChessboardProps) {
   const [draggedPiece, setDraggedPiece] = useState<Piece | null>(null);
   const [legalMoves, setLegalMoves] = useState<Square[]>([]);
 
@@ -209,6 +210,32 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
                   />
                 </div>
               )}
+
+              {visualizedVariation?.map((move, index) => {
+                  if (move.to === square) {
+                      const ghostPiece: Piece = {
+                          type: move.piece,
+                          color: move.color,
+                          square: move.to,
+                      };
+                      return (
+                          <div
+                              key={`ghost-${index}`}
+                              className="absolute inset-0 z-20 pointer-events-none"
+                              style={{ opacity: 0.4 - index * 0.1, transition: 'opacity 0.2s' }}
+                          >
+                              <PieceComponent
+                                  piece={ghostPiece}
+                                  size={squareSize}
+                                  onDragStart={(e) => e.preventDefault()}
+                                  onDragEnd={() => {}}
+                              />
+                          </div>
+                      );
+                  }
+                  return null;
+              })}
+
                <span className="absolute bottom-1 left-1 text-xs font-bold text-primary-foreground/50 select-none">
                 {colIndex === 0 && rank}
               </span>
