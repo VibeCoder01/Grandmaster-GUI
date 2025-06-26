@@ -33,9 +33,7 @@ export default function GrandmasterGuiPage() {
           makeMove(bestMove);
         }
       };
-      // Add a slight delay to make the engine's move feel more natural
-      const timeoutId = setTimeout(makeEngineMove, 500);
-      return () => clearTimeout(timeoutId);
+      makeEngineMove();
     }
   }, [turn, isGameOver, fen, makeMove, isViewingHistory]);
 
