@@ -117,7 +117,7 @@ export function useChessGame() {
     fen,
     board,
     turn,
-    status: state.isGameOver ? getStatus(state.gameInstance) : status,
+    status: status,
     isGameOver: state.isGameOver,
     history: state.history,
     moveHistoryIndex: state.moveHistoryIndex,

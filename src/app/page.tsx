@@ -23,7 +23,7 @@ export default function GrandmasterGuiPage() {
   } = useChessGame();
   const { toast } = useToast();
 
-  const lastMove = history.length > 0 ? history[history.length - 1] : undefined;
+  const lastMove = moveHistoryIndex > 0 ? history[moveHistoryIndex - 1] : undefined;
 
   useEffect(() => {
     if (turn === 'b' && !isGameOver && !isViewingHistory) {
