@@ -145,14 +145,14 @@ export default function SidePanel({
                         <Slider
                             id="depth"
                             min={1}
-                            max={4}
+                            max={5}
                             step={1}
                             value={[depth]}
                             onValueChange={(value) => onDepthChange(value[0])}
                         />
                         <span className="font-mono text-lg w-4 text-center">{depth}</span>
                     </div>
-                    <p className="text-sm text-muted-foreground">Higher values are stronger but slower. Max 4 recommended.</p>
+                    <p className="text-sm text-muted-foreground">Higher values are stronger but can be very slow.</p>
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between">
