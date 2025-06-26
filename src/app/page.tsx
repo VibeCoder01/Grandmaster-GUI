@@ -37,17 +37,12 @@ export default function GrandmasterGuiPage() {
 
   // Refs to hold the latest state for the worker's onmessage handler
   const fenRef = useRef(fen);
-  const isPonderingRef = useRef(isPondering);
   const isPonderingAnimationEnabledRef = useRef(isPonderingAnimationEnabled);
 
   useEffect(() => {
     fenRef.current = fen;
   }, [fen]);
 
-  useEffect(() => {
-    isPonderingRef.current = isPondering;
-  }, [isPondering]);
-  
   useEffect(() => {
     isPonderingAnimationEnabledRef.current = isPonderingAnimationEnabled;
   }, [isPonderingAnimationEnabled]);
@@ -100,12 +95,7 @@ export default function GrandmasterGuiPage() {
                 resolve(move ?? null);
                 pendingRequests.current.delete(id);
             }
-            // Only clear visuals if the engine was NOT pondering.
-            // When pondering, we want the last considered line to stay on the board until the user moves.
-            if (!isPonderingRef.current) {
-                setConsideredMove(null);
-                setVisualizedVariation(null);
-            }
+            // The component's useEffects now handle clearing visuals at the correct time.
         }
     };
     
@@ -121,6 +111,7 @@ export default function GrandmasterGuiPage() {
         return Promise.resolve(null);
     }
     
+    // Clear previous visuals at the start of any new search.
     setConsideredMove(null); 
     setVisualizedVariation(null);
 
@@ -165,6 +156,9 @@ export default function GrandmasterGuiPage() {
           requestBestMove(fen, depth).then(() => {
             if (!isCancelled) {
               setIsPondering(false);
+              // Clear visuals when pondering is complete and we are now waiting.
+              setVisualizedVariation(null);
+              setConsideredMove(null);
             }
           });
         }
@@ -174,9 +168,15 @@ export default function GrandmasterGuiPage() {
         isCancelled = true;
         clearTimeout(ponderTimeout);
         setIsPondering(false);
+        // Also clear visuals when pondering is cancelled (e.g., user makes a move or settings change)
+        setVisualizedVariation(null);
+        setConsideredMove(null);
       };
     } else {
       setIsPondering(false);
+      // Clear any leftover visuals if pondering is disabled or game state changes
+      setVisualizedVariation(null);
+      setConsideredMove(null);
     }
   }, [turn, fen, isGameOver, isViewingHistory, depth, requestBestMove, isPonderingEnabled]);
 
