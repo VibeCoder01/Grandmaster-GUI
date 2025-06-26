@@ -1,75 +1,87 @@
 import { Chess, type Square } from 'chess.js';
+import { findBestMove } from '@/ai/flows/find-best-move';
+
+async function getFallbackMove(fen: string): Promise<string | null> {
+  const game = new Chess(fen);
+  const moves = game.moves({ verbose: true });
+  if (moves.length === 0) return null;
+
+  // 1. Prioritize Captures
+  const captureMoves = moves.filter(move => move.flags.includes('c'));
+  if (captureMoves.length > 0) {
+    return captureMoves[Math.floor(Math.random() * captureMoves.length)].san;
+  }
+
+  // 2. Develop Knights
+  const knightMoves = moves.filter(move => 
+      move.piece === 'n' && 
+      (move.from === 'b8' || move.from === 'g8')
+  );
+  if (knightMoves.length > 0) {
+      return knightMoves[Math.floor(Math.random() * knightMoves.length)].san;
+  }
+
+  // 3. Develop Bishops
+  const bishopMoves = moves.filter(move => 
+      move.piece === 'b' && 
+      (move.from === 'c8' || move.from === 'f8')
+  );
+  if (bishopMoves.length > 0) {
+      return bishopMoves[Math.floor(Math.random() * bishopMoves.length)].san;
+  }
+  
+  // 4. Castle for King Safety
+  const kingsideCastle = moves.find(move => move.flags.includes('k'));
+  if (kingsideCastle) {
+      return kingsideCastle.san;
+  }
+  const queensideCastle = moves.find(move => move.flags.includes('q'));
+  if (queensideCastle) {
+      return queensideCastle.san;
+  }
+
+  // 5. Control the Center
+  const centerSquares: Square[] = ['e4', 'd4', 'e5', 'd5'];
+  const centerMoves = moves.filter(move => centerSquares.includes(move.to));
+  if (centerMoves.length > 0) {
+    return centerMoves[Math.floor(Math.random() * centerMoves.length)].san;
+  }
+
+  // 6. Fallback to any random move
+  return moves[Math.floor(Math.random() * moves.length)].san;
+}
 
 export async function getBestMove(fen: string): Promise<string | null> {
-  return new Promise(resolve => {
-    setTimeout(() => {
-      try {
-        const game = new Chess(fen);
-        if (game.isGameOver()) {
-          resolve(null);
-          return;
-        }
+  const game = new Chess(fen);
+  if (game.isGameOver()) {
+    return null;
+  }
 
-        const moves = game.moves({ verbose: true });
-        
-        // 1. Prioritize Captures
-        const captureMoves = moves.filter(move => move.flags.includes('c'));
-        if (captureMoves.length > 0) {
-          const bestMove = captureMoves[Math.floor(Math.random() * captureMoves.length)].san;
-          resolve(bestMove);
-          return;
-        }
+  const moves = game.moves();
+  if (moves.length === 0) {
+    return null;
+  }
+  if (moves.length === 1) {
+    return moves[0];
+  }
 
-        // 2. Develop Knights (engine is always black)
-        const knightMoves = moves.filter(move => 
-            move.piece === 'n' && 
-            (move.from === 'b8' || move.from === 'g8')
-        );
-        if (knightMoves.length > 0) {
-            const bestMove = knightMoves[Math.floor(Math.random() * knightMoves.length)].san;
-            resolve(bestMove);
-            return;
-        }
+  try {
+    // Add a timeout to prevent waiting forever on the AI
+    const aiPromise = findBestMove({
+      boardStateFen: fen,
+      legalMoves: moves,
+    });
+    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000)); // 5 second timeout
+    
+    const result = await Promise.race([aiPromise, timeoutPromise]);
+    
+    if (result && moves.includes(result.bestMove)) {
+      return result.bestMove;
+    }
+  } catch (e) {
+    console.error("AI engine failed, using fallback:", e);
+  }
 
-        // 3. Develop Bishops (engine is always black)
-        const bishopMoves = moves.filter(move => 
-            move.piece === 'b' && 
-            (move.from === 'c8' || move.from === 'f8')
-        );
-        if (bishopMoves.length > 0) {
-            const bestMove = bishopMoves[Math.floor(Math.random() * bishopMoves.length)].san;
-            resolve(bestMove);
-            return;
-        }
-        
-        // 4. Castle for King Safety (prioritizing kingside)
-        const kingsideCastle = moves.find(move => move.flags.includes('k'));
-        if (kingsideCastle) {
-            resolve(kingsideCastle.san);
-            return;
-        }
-        const queensideCastle = moves.find(move => move.flags.includes('q'));
-        if (queensideCastle) {
-            resolve(queensideCastle.san);
-            return;
-        }
-
-        // 5. Control the Center
-        const centerSquares: Square[] = ['e4', 'd4', 'e5', 'd5'];
-        const centerMoves = moves.filter(move => centerSquares.includes(move.to));
-        if (centerMoves.length > 0) {
-          const bestMove = centerMoves[Math.floor(Math.random() * centerMoves.length)].san;
-          resolve(bestMove);
-          return;
-        }
-
-        // 6. Fallback to any random move
-        const bestMove = moves[Math.floor(Math.random() * moves.length)].san;
-        resolve(bestMove);
-      } catch (e) {
-        console.error("Error in mock engine:", e);
-        resolve(null);
-      }
-    }, 500 + Math.random() * 1000); // Simulate thinking time
-  });
+  // If AI fails, times out, or returns an invalid move, use the fallback logic.
+  return await getFallbackMove(fen);
 }
