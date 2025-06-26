@@ -9,9 +9,23 @@ export async function getBestMove(fen: string): Promise<string | null> {
           resolve(null);
           return;
         }
-        const moves = game.moves();
-        const move = moves[Math.floor(Math.random() * moves.length)];
-        resolve(move);
+
+        // Get all legal moves with details
+        const moves = game.moves({ verbose: true });
+        
+        // Find all moves that are captures
+        const captureMoves = moves.filter(move => move.flags.includes('c'));
+
+        let bestMove;
+        if (captureMoves.length > 0) {
+          // If there are captures, pick a random one
+          bestMove = captureMoves[Math.floor(Math.random() * captureMoves.length)].san;
+        } else {
+          // Otherwise, pick any random legal move
+          bestMove = moves[Math.floor(Math.random() * moves.length)].san;
+        }
+        
+        resolve(bestMove);
       } catch (e) {
         console.error("Error in mock engine:", e);
         resolve(null);
