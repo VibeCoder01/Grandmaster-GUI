@@ -168,6 +168,14 @@ const findBestMove = async (fen: string, depth: number, id: number, isPonder: bo
         let movesAnalyzed = 0;
 
         for (const move of moves) {
+            movesAnalyzed++;
+            if (!isPonder) {
+                const overallProgress = Math.round((((currentDepth - 1) / depth) + (movesAnalyzed / moveCount / depth)) * 100);
+                self.postMessage({ type: 'progress', id, progress: overallProgress });
+                // Yield to let the main thread process the progress update before starting heavy calculation.
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
+
             game.move(move);
             const result = minimax(game, currentDepth - 1, -Infinity, Infinity, !isMaximizingPlayer);
             game.undo();
@@ -189,14 +197,6 @@ const findBestMove = async (fen: string, depth: number, id: number, isPonder: bo
                     currentBestMoveForDepth = move;
                     bestVariationForDepth = [move, ...result.pv];
                 }
-            }
-
-            movesAnalyzed++;
-            if (!isPonder) {
-                const overallProgress = Math.round((((currentDepth - 1) / depth) + (movesAnalyzed / moveCount / depth)) * 100);
-                self.postMessage({ type: 'progress', id, progress: overallProgress });
-                // Yield to the event loop to allow UI updates to be processed.
-                await new Promise(resolve => setTimeout(resolve, 0));
             }
         }
         
