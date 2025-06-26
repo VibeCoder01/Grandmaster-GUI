@@ -213,12 +213,14 @@ export default function SidePanel({
             </DialogContent>
           </Dialog>
         </div>
-        <div className="grid grid-cols-2 gap-2 text-center text-xl font-mono font-semibold">
-          <div className={cn("p-2 rounded-lg bg-card text-card-foreground", turn === 'w' && "ring-2 ring-accent")}>
-            <span>{formatTime(whiteTime)}</span>
+        <div className="grid grid-cols-2 gap-2 text-center">
+          <div className={cn("p-2 rounded-lg bg-card text-card-foreground space-y-1", turn === 'w' && "ring-2 ring-accent")}>
+            <div className="text-sm text-muted-foreground">White</div>
+            <div className="text-xl font-mono font-semibold">{formatTime(whiteTime)}</div>
           </div>
-          <div className={cn("p-2 rounded-lg bg-card text-card-foreground", turn === 'b' && "ring-2 ring-accent")}>
-            <span>{formatTime(blackTime)}</span>
+          <div className={cn("p-2 rounded-lg bg-card text-card-foreground space-y-1", turn === 'b' && "ring-2 ring-accent")}>
+            <div className="text-sm text-muted-foreground">Black</div>
+            <div className="text-xl font-mono font-semibold">{formatTime(blackTime)}</div>
           </div>
         </div>
         <div className="flex justify-between items-start text-sm min-h-10">
