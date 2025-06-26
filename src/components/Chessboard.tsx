@@ -31,6 +31,7 @@ type AnimatedPiece = Piece & {
 export default function Chessboard({ board, onMove, turn, isGameOver, isViewingHistory, lastMove, fen, visualizedVariation, isThinking, isPondering }: ChessboardProps) {
   const [draggedPiece, setDraggedPiece] = useState<Piece | null>(null);
   const [legalMoves, setLegalMoves] = useState<Square[]>([]);
+  const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
 
   const [animatedPiece, setAnimatedPiece] = useState<AnimatedPiece | null>(null);
   const [animatedStyle, setAnimatedStyle] = useState<React.CSSProperties>({});
@@ -98,6 +99,7 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
     const img = new Image();
     e.dataTransfer.setDragImage(img, 0, 0);
     setDraggedPiece(piece);
+    setSelectedSquare(null); // Clear click selection
 
     const game = new Chess(fen);
     const moves = game.moves({ square: piece.square, verbose: true });
@@ -131,10 +133,68 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
 
     onMove(move);
     setLegalMoves([]); // Clear highlights immediately on drop.
+    setSelectedSquare(null);
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+  };
+  
+  const handleSquareClick = (square: Square) => {
+    if (isGameOver || isViewingHistory || draggedPiece) return;
+
+    const game = new Chess(fen);
+    
+    // If a square is already selected (this is the second click)
+    if (selectedSquare) {
+        // If we click the same square again, deselect it
+        if (square === selectedSquare) {
+            setSelectedSquare(null);
+            setLegalMoves([]);
+            return;
+        }
+
+        // Check if the move is legal
+        const legalMove = game.moves({ square: selectedSquare, verbose: true }).find(m => m.to === square);
+
+        if (legalMove) {
+            const isPromotion =
+                legalMove.piece === 'p' &&
+                ((legalMove.color === 'w' && square[1] === '8') ||
+                 (legalMove.color === 'b' && square[1] === '1'));
+            
+            const moveData: { from: Square; to: Square; promotion?: 'q' } = {
+                from: selectedSquare,
+                to: square,
+            };
+            if (isPromotion) {
+                moveData.promotion = 'q';
+            }
+            onMove(moveData);
+            setSelectedSquare(null);
+            setLegalMoves([]);
+        } else {
+            // The move is not legal. Let's see if we're clicking another of our own pieces.
+            const pieceOnClickedSquare = game.get(square);
+            if (pieceOnClickedSquare && pieceOnClickedSquare.color === turn) {
+                // It's another of our pieces, so we select it instead.
+                setSelectedSquare(square);
+                const newMoves = game.moves({ square: square, verbose: true });
+                setLegalMoves(newMoves.map(m => m.to));
+            } else {
+                // Invalid move, so deselect everything.
+                setSelectedSquare(null);
+                setLegalMoves([]);
+            }
+        }
+    } else { // This is the first click
+        const piece = game.get(square);
+        if (piece && piece.color === turn) {
+            setSelectedSquare(square);
+            const moves = game.moves({ square: square, verbose: true });
+            setLegalMoves(moves.map(m => m.to));
+        }
+    }
   };
 
   const boardPieces = useMemo(() => {
@@ -158,10 +218,10 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
 
       if (isPondering) {
           // A cool, deep blue tint for pondering.
-          style.filter = 'sepia(60%) hue-rotate(180deg) saturate(500%) brightness(0.7)';
+          style.filter = 'sepia(80%) hue-rotate(180deg) saturate(500%) brightness(0.7)';
       } else if (isThinking) {
           // A warm, intense red tint for thinking.
-          style.filter = 'sepia(80%) hue-rotate(330deg) saturate(400%) brightness(0.8)';
+          style.filter = 'sepia(80%) hue-rotate(330deg) saturate(600%) brightness(0.8)';
       }
       
       return style;
@@ -179,6 +239,7 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
           const piece = boardPieces.find(p => p.square === square);
           const isLight = (rowIndex + colIndex) % 2 !== 0;
           
+          const isSelectedSquare = selectedSquare === square;
           const isFromSquare = !animatedPiece && lastMove?.from === square;
           const isToSquare = !animatedPiece && lastMove?.to === square;
 
@@ -191,25 +252,27 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
           return (
             <div
               key={square}
+              onClick={() => handleSquareClick(square)}
               onDrop={(e) => handleDrop(e, square)}
               onDragOver={handleDragOver}
               className={cn(
-                'w-full h-full flex items-center justify-center relative transition-colors duration-200',
+                'w-full h-full flex items-center justify-center relative transition-colors duration-200 cursor-pointer',
                 isLight ? 'bg-secondary' : 'bg-primary',
-                draggedPiece && 'transition-none'
+                draggedPiece && 'transition-none',
+                isSelectedSquare && 'bg-accent/40'
               )}
             >
               {isLegalMove && (
-                <div className="absolute w-full h-full flex items-center justify-center">
+                <div className="absolute w-full h-full flex items-center justify-center pointer-events-none">
                   {!piece && <div className="w-1/3 h-1/3 bg-accent/50 rounded-full" />}
                   {piece && <div className="absolute inset-1 border-4 border-accent/50 rounded-full" />}
                 </div>
               )}
-              {isFromSquare && (
-                <div className="absolute w-1/3 h-1/3 bg-accent/50 rounded-full" />
+              {isFromSquare && !selectedSquare && (
+                <div className="absolute w-1/3 h-1/3 bg-accent/50 rounded-full pointer-events-none" />
               )}
-              {isToSquare && (
-                <div className="absolute inset-1 border-4 border-accent/50 rounded-full" />
+              {isToSquare && !selectedSquare && (
+                <div className="absolute inset-1 border-4 border-accent/50 rounded-full pointer-events-none" />
               )}
               
               {piece && (
