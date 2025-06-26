@@ -99,7 +99,7 @@ export function useChessGame() {
   const { fen, board, turn, status } = useMemo(() => {
     const tempGame = new Chess();
     state.history.slice(0, state.moveHistoryIndex).forEach(move => {
-      tempGame.move(move.san);
+      tempGame.move({ from: move.from, to: move.to, promotion: move.promotion });
     });
     return {
       fen: tempGame.fen(),
