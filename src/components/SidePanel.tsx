@@ -224,7 +224,11 @@ export default function SidePanel({
           </div>
         </div>
         <div className="flex justify-between items-start text-sm min-h-10">
-          <Badge variant={isGameOver ? "destructive" : "secondary"} className="capitalize">{status}</Badge>
+          <div>
+            {status !== 'In Progress' && (
+              <Badge variant={isGameOver ? "destructive" : "secondary"} className="capitalize">{status}</Badge>
+            )}
+          </div>
           <div className="flex items-center justify-end gap-2 flex-grow">
             <TurnStatusDisplay />
           </div>
