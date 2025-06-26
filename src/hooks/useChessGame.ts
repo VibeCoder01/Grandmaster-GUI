@@ -4,12 +4,13 @@ import { useReducer, useCallback, useMemo } from 'react';
 import { Chess, type Square, type Piece as PieceInfo, type Move } from 'chess.js';
 
 type GameState = {
-  gameInstance: Chess;
+  // fen is the single source of truth for the current board state being displayed.
   fen: string;
+  // history is the full history of the game.
   history: Move[];
+  // isGameOver is true only when the main game line is over.
   isGameOver: boolean;
-  status: string;
-  turn: 'w' | 'b';
+  // moveHistoryIndex tracks which point in the history we are viewing.
   moveHistoryIndex: number;
 };
 
@@ -31,12 +32,9 @@ function getStatus(game: Chess): string {
 function createInitialState(): GameState {
     const game = new Chess();
     return {
-        gameInstance: game,
         fen: game.fen(),
         history: [],
         isGameOver: false,
-        status: 'In Progress',
-        turn: 'w',
         moveHistoryIndex: 0,
     };
 }
@@ -44,34 +42,32 @@ function createInitialState(): GameState {
 function gameReducer(state: GameState, action: Action): GameState {
   switch (action.type) {
     case 'MOVE': {
-      // To allow making a move, we must be at the latest point in history.
+      // A move can only be made if we are at the end of the history.
       if (state.moveHistoryIndex !== state.history.length) return state;
 
-      const gameCopy = new Chess(state.fen);
-      const result = gameCopy.move(action.move);
-      
-      if (result === null) {
-        return state; // Invalid move
+      const game = new Chess(state.fen);
+      try {
+        const moveResult = game.move(action.move);
+        const newHistory = [...state.history, moveResult];
+        return {
+          ...state,
+          fen: game.fen(),
+          history: newHistory,
+          isGameOver: game.isGameOver(),
+          moveHistoryIndex: newHistory.length,
+        };
+      } catch (e) {
+        // Invalid move, return current state without crashing.
+        return state;
       }
-      
-      // Append the new move to the existing history array.
-      const newHistory = [...state.history, result];
-
-      return {
-        ...state,
-        gameInstance: gameCopy,
-        fen: gameCopy.fen(),
-        history: newHistory,
-        isGameOver: gameCopy.isGameOver(),
-        status: getStatus(gameCopy),
-        turn: gameCopy.turn(),
-        moveHistoryIndex: newHistory.length,
-      };
     }
     case 'SET_HISTORY_INDEX': {
       const newIndex = Math.max(0, Math.min(action.index, state.history.length));
+      const newFen = newIndex > 0 ? state.history[newIndex - 1].after : new Chess().fen();
+
       return {
         ...state,
+        fen: newFen,
         moveHistoryIndex: newIndex,
       };
     }
@@ -97,31 +93,27 @@ export function useChessGame() {
     dispatch({ type: 'SET_HISTORY_INDEX', index });
   }, []);
   
-  const { fen, board, turn, status } = useMemo(() => {
-    // Determine the FEN for the currently viewed move history index.
-    const fenToLoad = state.moveHistoryIndex > 0
-      ? state.history[state.moveHistoryIndex - 1].after
-      : new Chess().fen(); // Starting FEN for index 0
+  // Create a temporary game instance from the current FEN to derive board state.
+  const game = useMemo(() => new Chess(state.fen), [state.fen]);
 
-    const tempGame = new Chess(fenToLoad);
-
-    return {
-      fen: tempGame.fen(),
-      board: tempGame.board(),
-      turn: tempGame.turn(),
-      status: getStatus(tempGame),
-    };
+  const lastMove = useMemo(() => {
+    if (state.moveHistoryIndex > 0) {
+      return state.history[state.moveHistoryIndex - 1];
+    }
+    return undefined;
   }, [state.history, state.moveHistoryIndex]);
 
   return {
-    fen,
-    board,
-    turn,
-    status: status,
+    fen: state.fen,
+    board: game.board(),
+    turn: game.turn(),
+    status: getStatus(game),
+    // isGameOver should reflect the end of the main game line, not the viewed history state.
     isGameOver: state.isGameOver,
     history: state.history,
     moveHistoryIndex: state.moveHistoryIndex,
     isViewingHistory: state.moveHistoryIndex < state.history.length,
+    lastMove,
     makeMove,
     resetGame,
     setMoveHistoryIndex,
