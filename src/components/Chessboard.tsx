@@ -16,6 +16,8 @@ interface ChessboardProps {
   lastMove?: Move;
   fen: string;
   visualizedVariation?: Move[] | null;
+  isThinking: boolean;
+  isPondering: boolean;
 }
 
 const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
@@ -26,7 +28,7 @@ type AnimatedPiece = Piece & {
     to: Square;
 };
 
-export default function Chessboard({ board, onMove, turn, isGameOver, isViewingHistory, lastMove, fen, visualizedVariation }: ChessboardProps) {
+export default function Chessboard({ board, onMove, turn, isGameOver, isViewingHistory, lastMove, fen, visualizedVariation, isThinking, isPondering }: ChessboardProps) {
   const [draggedPiece, setDraggedPiece] = useState<Piece | null>(null);
   const [legalMoves, setLegalMoves] = useState<Square[]>([]);
 
@@ -147,6 +149,23 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
     });
     return pieces;
   }, [board]);
+  
+  const getGhostStyle = (index: number): React.CSSProperties => {
+      const style: React.CSSProperties = {
+          opacity: 0.4 - index * 0.08,
+          transition: 'opacity 0.2s, filter 0.2s'
+      };
+
+      if (isPondering) {
+          // A cool, bluish tint for pondering.
+          style.filter = 'sepia(60%) hue-rotate(170deg) saturate(200%) brightness(0.9)';
+      } else if (isThinking) {
+          // A warm, reddish tint for thinking.
+          style.filter = 'sepia(60%) hue-rotate(320deg) saturate(300%) brightness(0.9)';
+      }
+      
+      return style;
+  };
 
   return (
     <div
@@ -222,7 +241,7 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
                           <div
                               key={`ghost-${index}`}
                               className="absolute inset-0 z-20 pointer-events-none"
-                              style={{ opacity: 0.4 - index * 0.08, transition: 'opacity 0.2s' }}
+                              style={getGhostStyle(index)}
                           >
                               <PieceComponent
                                   piece={ghostPiece}

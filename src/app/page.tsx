@@ -196,6 +196,8 @@ export default function GrandmasterGuiPage() {
         lastMove={lastMove}
         fen={fen}
         visualizedVariation={visualizedVariation}
+        isThinking={isThinking}
+        isPondering={isPondering}
       />
       <SidePanel
         status={status}
