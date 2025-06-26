@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Chess, type Square, type Piece as PieceInfo, type Move } from 'chess.js';
 import { cn } from '@/lib/utils';
 import PieceComponent from '@/components/Piece';
@@ -22,15 +22,8 @@ const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
 export default function Chessboard({ board, onMove, turn, isGameOver, isViewingHistory, lastMove, fen }: ChessboardProps) {
   const [draggedPiece, setDraggedPiece] = useState<Piece | null>(null);
   const [legalMoves, setLegalMoves] = useState<Square[]>([]);
-  const [isHighlighting, setIsHighlighting] = useState(false);
-  const highlightTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, piece: Piece) => {
-    if (highlightTimeoutRef.current) {
-      clearTimeout(highlightTimeoutRef.current);
-      highlightTimeoutRef.current = null;
-    }
-
     if (piece.color !== turn || isGameOver || isViewingHistory) {
       e.preventDefault();
       return;
@@ -43,20 +36,11 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
     const game = new Chess(fen);
     const moves = game.moves({ square: piece.square, verbose: true });
     setLegalMoves(moves.map(m => m.to));
-    setIsHighlighting(true);
   };
 
   const handleDragEnd = () => {
     setDraggedPiece(null);
-    setIsHighlighting(false);
-
-    if (highlightTimeoutRef.current) {
-      clearTimeout(highlightTimeoutRef.current);
-    }
-    highlightTimeoutRef.current = setTimeout(() => {
-      setLegalMoves([]);
-      highlightTimeoutRef.current = null;
-    }, 1000);
+    setLegalMoves([]);
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>, toSquare: Square) => {
@@ -111,7 +95,10 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
           const square = `${file}${rank}` as Square;
           const piece = boardPieces.find(p => p.square === square);
           const isLight = (rowIndex + colIndex) % 2 !== 0;
-          const isLastMoveSquare = lastMove?.from === square || lastMove?.to === square;
+          
+          const isFromSquare = lastMove?.from === square;
+          const isToSquare = lastMove?.to === square;
+
           const isDraggedOverSquare = draggedPiece?.square === square;
           const isLegalMove = legalMoves.includes(square);
 
@@ -123,19 +110,24 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
               className={cn(
                 'w-full h-full flex items-center justify-center relative transition-colors duration-200',
                 isLight ? 'bg-secondary' : 'bg-primary',
-                isLastMoveSquare && 'bg-accent/40',
                 draggedPiece && 'transition-none'
               )}
             >
+              {/* Highlight for legal moves during drag */}
               {isLegalMove && (
-                <div className={cn(
-                  "absolute w-full h-full flex items-center justify-center transition-opacity duration-1000",
-                  isHighlighting ? 'opacity-100' : 'opacity-0'
-                )}>
+                <div className="absolute w-full h-full flex items-center justify-center">
                   {!piece && <div className="w-1/3 h-1/3 bg-accent/50 rounded-full" />}
                   {piece && <div className="absolute inset-1 border-4 border-accent/50 rounded-full" />}
                 </div>
               )}
+              {/* Highlight for the last move made */}
+              {isFromSquare && (
+                <div className="absolute w-1/3 h-1/3 bg-accent/50 rounded-full" />
+              )}
+              {isToSquare && (
+                <div className="absolute inset-1 border-4 border-accent/50 rounded-full" />
+              )}
+              
               {piece && (
                 <div
                   style={{
