@@ -25,6 +25,7 @@ export default function GrandmasterGuiPage() {
   } = useChessGame();
   const { toast } = useToast();
   const [depth, setDepth] = useState(2);
+  const [isPondering, setIsPondering] = useState(false);
   const ponderResult = useRef<{ fen: string, move: string } | null>(null);
 
   const lastMove = moveHistoryIndex > 0 && history.length >= moveHistoryIndex ? history[moveHistoryIndex - 1] : undefined;
@@ -55,12 +56,19 @@ export default function GrandmasterGuiPage() {
     // Effect to handle pondering on the user's turn
     if (turn === 'w' && !isGameOver && !isViewingHistory) {
       const ponder = async () => {
+        setIsPondering(true);
         // 1. Predict human's best move with a shallow search
         const predictedHumanMove = await getBestMove(fen, 1);
-        if (!predictedHumanMove) return;
+        if (!predictedHumanMove) {
+          setIsPondering(false);
+          return;
+        }
 
         // If the user has already moved while we were predicting, stop.
-        if (turn !== 'w') return;
+        if (turn !== 'w') {
+          setIsPondering(false);
+          return;
+        }
 
         // 2. Create the board state after that predicted move.
         const game = new Chess(fen);
@@ -71,12 +79,16 @@ export default function GrandmasterGuiPage() {
         const engineResponse = await getBestMove(futureFen, depth);
 
         // If the user has moved while we were calculating, the result is stale.
-        if (turn !== 'w') return;
+        if (turn !== 'w') {
+          setIsPondering(false);
+          return;
+        }
 
         if (engineResponse) {
           // Cache the result
           ponderResult.current = { fen: futureFen, move: engineResponse };
         }
+        setIsPondering(false);
       };
       
       // Start pondering in the background
@@ -84,6 +96,7 @@ export default function GrandmasterGuiPage() {
     } else {
         // Clear ponder result if it's not the user's turn
         ponderResult.current = null;
+        setIsPondering(false);
     }
   }, [turn, fen, isGameOver, isViewingHistory, depth]);
 
@@ -119,6 +132,7 @@ export default function GrandmasterGuiPage() {
         setMoveHistoryIndex={setMoveHistoryIndex}
         depth={depth}
         onDepthChange={setDepth}
+        isPondering={isPondering}
       />
     </main>
   );

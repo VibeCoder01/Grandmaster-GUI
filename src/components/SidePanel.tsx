@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Move } from 'chess.js';
@@ -7,7 +8,7 @@ import MoveHistory from './MoveHistory';
 import GameControls from './GameControls';
 import AiHint from './AiHint';
 import { Badge } from '@/components/ui/badge';
-import { Settings } from 'lucide-react';
+import { Loader2, Settings } from 'lucide-react';
 import { Button } from './ui/button';
 import {
   Dialog,
@@ -34,6 +35,7 @@ interface SidePanelProps {
   setMoveHistoryIndex: (index: number) => void;
   depth: number;
   onDepthChange: (depth: number) => void;
+  isPondering: boolean;
 }
 
 export default function SidePanel({
@@ -47,7 +49,8 @@ export default function SidePanel({
   resetGame,
   setMoveHistoryIndex,
   depth,
-  onDepthChange
+  onDepthChange,
+  isPondering
 }: SidePanelProps) {
   const turnText = turn === 'w' ? "White's Turn" : "Black's Turn";
 
@@ -103,7 +106,15 @@ export default function SidePanel({
         </div>
         <div className="flex justify-between items-center text-sm">
           <Badge variant={isGameOver ? "destructive" : "secondary"} className="capitalize">{status}</Badge>
-          <Badge variant="outline">{turnText}</Badge>
+          <div className="flex items-center gap-2">
+              {isPondering && (
+                  <div className="flex items-center gap-1.5 text-muted-foreground animate-pulse">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <span className="text-xs font-medium">Pondering...</span>
+                  </div>
+              )}
+              <Badge variant="outline">{turnText}</Badge>
+          </div>
         </div>
         <Separator />
         <AiHint fen={fen} isGameOver={isGameOver} isViewingHistory={isViewingHistory} />
