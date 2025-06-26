@@ -168,6 +168,9 @@ const findBestMove = (fen: string, depth: number, id: number) => {
             const result = minimax(game, currentDepth - 1, -Infinity, Infinity, !isMaximizingPlayer);
             game.undo();
 
+            const exploredVariation = [move, ...result.pv];
+            self.postMessage({ type: 'exploring', id, variation: exploredVariation });
+
             const boardValue = result.score;
             
             if (isMaximizingPlayer) {

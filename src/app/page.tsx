@@ -27,7 +27,7 @@ export default function GrandmasterGuiPage() {
   const [isThinking, setIsThinking] = useState(false);
   const [isPondering, setIsPondering] = useState(false);
   const [bestVariation, setBestVariation] = useState<Move[] | null>(null);
-  const [dizzyVariation, setDizzyVariation] = useState<Move[] | null>(null);
+  const [exploredVariation, setExploredVariation] = useState<Move[] | null>(null);
   const [isPonderingEnabled, setIsPonderingEnabled] = useState(true);
   const [isPonderingAnimationEnabled, setIsPonderingAnimationEnabled] = useState(true);
 
@@ -35,35 +35,28 @@ export default function GrandmasterGuiPage() {
   const nextRequestId = useRef(0);
   const pendingRequests = useRef(new Map<number, (value: string | null) => void>());
   const currentSearchId = useRef<number | null>(null);
-  const dizzyIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const searchFenMapRef = useRef(new Map<number, string>());
-
-  const fenRef = useRef(fen);
-
-  useEffect(() => {
-    fenRef.current = fen;
-  }, [fen]);
 
   useEffect(() => {
     const worker = new Worker(new URL('../lib/engine.worker.ts', import.meta.url));
     workerRef.current = worker;
 
-    worker.onmessage = (e: MessageEvent<{id: number, move?: string | null, variation?: string[], type: 'interim' | 'final'}>) => {
+    worker.onmessage = (e: MessageEvent<{id: number, move?: string | null, variation?: string[], type: 'interim' | 'final' | 'exploring'}>) => {
         const { id, move, variation, type } = e.data;
         
         if (id !== currentSearchId.current) {
             return;
         }
 
-        if (type === 'interim') {
-            if (variation && variation.length > 0) {
+        const handleVariation = (variationData: string[], isBest: boolean) => {
+             if (variationData && variationData.length > 0) {
                 const searchFen = searchFenMapRef.current.get(id);
                 if (!searchFen) return;
 
                 const tempGame = new Chess(searchFen);
                 const moveObjects: Move[] = [];
                 let validVariation = true;
-                for (const moveStr of variation) {
+                for (const moveStr of variationData) {
                     try {
                         const moveObj = tempGame.move(moveStr, { sloppy: true });
                         if (moveObj) {
@@ -79,10 +72,21 @@ export default function GrandmasterGuiPage() {
                 }
 
                 if (validVariation) {
-                    setBestVariation(moveObjects);
+                    if (isBest) {
+                      setBestVariation(moveObjects);
+                    } else {
+                      setExploredVariation(moveObjects);
+                    }
                 }
             }
+        }
+
+        if (type === 'exploring') {
+          handleVariation(variation!, false);
+        } else if (type === 'interim') {
+          handleVariation(variation!, true);
         } else if (type === 'final') {
+            setExploredVariation(null);
             const resolve = pendingRequests.current.get(id);
             if (resolve) {
                 resolve(move ?? null);
@@ -106,6 +110,7 @@ export default function GrandmasterGuiPage() {
     }
     
     setBestVariation(null);
+    setExploredVariation(null);
     pendingRequests.current.clear();
 
     const id = nextRequestId.current++;
@@ -120,52 +125,6 @@ export default function GrandmasterGuiPage() {
 
     return promise;
   }, []);
-
-
-  useEffect(() => {
-    const isAnimating = (isThinking || isPondering) && isPonderingAnimationEnabled;
-
-    if (isAnimating) {
-        if (dizzyIntervalRef.current) {
-            clearInterval(dizzyIntervalRef.current);
-        }
-        dizzyIntervalRef.current = setInterval(() => {
-            const tempGame = new Chess(fenRef.current);
-            const moves = tempGame.moves({ verbose: true });
-            if (moves.length === 0) {
-                setDizzyVariation(null);
-                return;
-            }
-            const randomMove = moves[Math.floor(Math.random() * moves.length)];
-            
-            try {
-                tempGame.move(randomMove.san);
-                const responses = tempGame.moves({ verbose: true });
-                if (responses.length > 0) {
-                    const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-                    setDizzyVariation([randomMove, randomResponse]);
-                } else {
-                    setDizzyVariation([randomMove]);
-                }
-            } catch (e) {
-                setDizzyVariation([randomMove]);
-            }
-        }, 300);
-
-    } else {
-        if (dizzyIntervalRef.current) {
-            clearInterval(dizzyIntervalRef.current);
-            dizzyIntervalRef.current = null;
-        }
-        setDizzyVariation(null);
-    }
-
-    return () => {
-        if (dizzyIntervalRef.current) {
-            clearInterval(dizzyIntervalRef.current);
-        }
-    }
-  }, [isThinking, isPondering, isPonderingAnimationEnabled]);
 
 
   useEffect(() => {
@@ -231,7 +190,7 @@ export default function GrandmasterGuiPage() {
         isViewingHistory={isViewingHistory}
         lastMove={lastMove}
         fen={fen}
-        visualizedVariation={dizzyVariation}
+        visualizedVariation={isPonderingAnimationEnabled ? exploredVariation : null}
         isThinking={isThinking}
         isPondering={isPondering}
       />
