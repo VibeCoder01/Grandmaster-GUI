@@ -1,6 +1,7 @@
+
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Chess, type Square, type Piece as PieceInfo, type Move } from 'chess.js';
 import { cn } from '@/lib/utils';
 import PieceComponent from '@/components/Piece';
@@ -19,9 +20,71 @@ interface ChessboardProps {
 const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
 
+type AnimatedPiece = Piece & {
+    from: Square;
+    to: Square;
+};
+
 export default function Chessboard({ board, onMove, turn, isGameOver, isViewingHistory, lastMove, fen }: ChessboardProps) {
   const [draggedPiece, setDraggedPiece] = useState<Piece | null>(null);
   const [legalMoves, setLegalMoves] = useState<Square[]>([]);
+
+  const [animatedPiece, setAnimatedPiece] = useState<AnimatedPiece | null>(null);
+  const [animatedStyle, setAnimatedStyle] = useState<React.CSSProperties>({});
+  const [squareSize, setSquareSize] = useState(64);
+  const boardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function updateSquareSize() {
+      if (boardRef.current) {
+        setSquareSize(boardRef.current.offsetWidth / 8);
+      }
+    }
+    updateSquareSize();
+    window.addEventListener('resize', updateSquareSize);
+    return () => window.removeEventListener('resize', updateSquareSize);
+  }, []);
+
+  useEffect(() => {
+    if (!lastMove || isViewingHistory || !lastMove.from || !lastMove.to) {
+      setAnimatedPiece(null);
+      return;
+    }
+
+    const pieceToAnimate: AnimatedPiece = {
+      type: lastMove.piece,
+      color: lastMove.color,
+      square: lastMove.from, // required by Piece type
+      from: lastMove.from,
+      to: lastMove.to,
+    };
+
+    setAnimatedPiece(pieceToAnimate);
+    
+    const fromCol = files.indexOf(pieceToAnimate.from[0]);
+    const fromRow = ranks.indexOf(pieceToAnimate.from[1]);
+    
+    setAnimatedStyle({
+        transform: `translate(${fromCol * squareSize}px, ${fromRow * squareSize}px)`,
+        transition: 'transform 0s',
+    });
+
+    requestAnimationFrame(() => {
+        const toCol = files.indexOf(pieceToAnimate.to[0]);
+        const toRow = ranks.indexOf(pieceToAnimate.to[1]);
+        setAnimatedStyle({
+            transform: `translate(${toCol * squareSize}px, ${toRow * squareSize}px)`,
+            transition: 'transform 0.3s ease-in-out',
+        });
+    });
+
+    const timer = setTimeout(() => {
+      setAnimatedPiece(null);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [lastMove, isViewingHistory, squareSize]);
+
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, piece: Piece) => {
     if (piece.color !== turn || isGameOver || isViewingHistory) {
@@ -84,11 +147,10 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
     return pieces;
   }, [board]);
 
-  const squareSize = 64;
-
   return (
     <div
-      className="grid grid-cols-8 grid-rows-8 border-4 border-card shadow-2xl rounded-lg aspect-square"
+      ref={boardRef}
+      className="grid grid-cols-8 grid-rows-8 border-4 border-card shadow-2xl rounded-lg aspect-square relative"
       style={{ width: 'clamp(320px, 90vmin, 512px)', height: 'clamp(320px, 90vmin, 512px)' }}
     >
       {ranks.map((rank, rowIndex) =>
@@ -97,11 +159,14 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
           const piece = boardPieces.find(p => p.square === square);
           const isLight = (rowIndex + colIndex) % 2 !== 0;
           
-          const isFromSquare = lastMove?.from === square;
-          const isToSquare = lastMove?.to === square;
+          const isFromSquare = !animatedPiece && lastMove?.from === square;
+          const isToSquare = !animatedPiece && lastMove?.to === square;
 
-          const isDraggedOverSquare = draggedPiece?.square === square;
           const isLegalMove = legalMoves.includes(square);
+          
+          const isAnimatingFrom = animatedPiece?.from === square;
+          const isAnimatingTo = animatedPiece?.to === square;
+          const isPieceHiddenForAnimation = isAnimatingFrom || isAnimatingTo;
 
           return (
             <div
@@ -114,14 +179,12 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
                 draggedPiece && 'transition-none'
               )}
             >
-              {/* Highlight for legal moves during drag */}
               {isLegalMove && (
                 <div className="absolute w-full h-full flex items-center justify-center">
                   {!piece && <div className="w-1/3 h-1/3 bg-accent/50 rounded-full" />}
                   {piece && <div className="absolute inset-1 border-4 border-accent/50 rounded-full" />}
                 </div>
               )}
-              {/* Highlight for the last move made */}
               {isFromSquare && (
                 <div className="absolute w-1/3 h-1/3 bg-accent/50 rounded-full" />
               )}
@@ -132,7 +195,7 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
               {piece && (
                 <div
                   style={{
-                    opacity: isDraggedOverSquare ? 0.25 : 1,
+                    opacity: isPieceHiddenForAnimation ? 0 : (draggedPiece?.square === square ? 0.25 : 1),
                     transition: 'opacity 0.1s ease-in-out',
                     width: '100%',
                     height: '100%'
@@ -155,6 +218,24 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
             </div>
           );
         })
+      )}
+
+      {animatedPiece && squareSize > 0 && (
+        <div
+            className="absolute top-0 left-0 pointer-events-none z-10"
+            style={{
+                width: squareSize,
+                height: squareSize,
+                ...animatedStyle,
+            }}
+        >
+            <PieceComponent
+                piece={{type: animatedPiece.type, color: animatedPiece.color, square: animatedPiece.to}}
+                size={squareSize}
+                onDragStart={(e) => e.preventDefault()}
+                onDragEnd={() => {}}
+            />
+        </div>
       )}
     </div>
   );
