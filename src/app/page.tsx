@@ -83,12 +83,16 @@ export default function GrandmasterGuiPage() {
             }
         }
 
-        // Only update UI for non-ponder ("thinking") requests that are not stale.
-        if (!isPonder && id === currentSearchId.current) {
-            if (type === 'exploring') {
-            handleVariation(variation!, false);
-            } else if (type === 'interim') {
-            handleVariation(variation!, true);
+        // Update UI for thinking and pondering animations
+        if (type === 'exploring') {
+            // Animate for both pondering and the current thinking search
+            if (isPonder || id === currentSearchId.current) {
+                handleVariation(variation!, false);
+            }
+        } else if (type === 'interim') {
+            // Update best move text only for the current thinking search
+            if (!isPonder && id === currentSearchId.current) {
+                handleVariation(variation!, true);
             }
         }
 
