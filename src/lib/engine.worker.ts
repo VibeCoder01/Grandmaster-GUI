@@ -135,7 +135,7 @@ const minimax = (game: Chess, depth: number, alpha: number, beta: number, isMaxi
     return { score: bestScore, pv: bestPV };
 };
 
-const findBestMove = (fen: string, depth: number, id: number, isPonder: boolean) => {
+const findBestMove = async (fen: string, depth: number, id: number, isPonder: boolean) => {
     const game = new Chess(fen);
     if (game.isGameOver()) {
         self.postMessage({ type: 'final', id, move: null });
@@ -195,6 +195,8 @@ const findBestMove = (fen: string, depth: number, id: number, isPonder: boolean)
             if (!isPonder) {
                 const overallProgress = Math.round((((currentDepth - 1) / depth) + (movesAnalyzed / moveCount / depth)) * 100);
                 self.postMessage({ type: 'progress', id, progress: overallProgress });
+                // Yield to the event loop to allow UI updates to be processed.
+                await new Promise(resolve => setTimeout(resolve, 0));
             }
         }
         
@@ -211,7 +213,7 @@ const findBestMove = (fen: string, depth: number, id: number, isPonder: boolean)
 
 // --- Worker Listener ---
 
-self.onmessage = (e: MessageEvent<{ id: number, fen: string, depth: number, isPonder: boolean }>) => {
+self.onmessage = async (e: MessageEvent<{ id: number, fen: string, depth: number, isPonder: boolean }>) => {
     const { id, fen, depth, isPonder } = e.data;
-    findBestMove(fen, depth, id, isPonder);
+    await findBestMove(fen, depth, id, isPonder);
 };
