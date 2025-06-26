@@ -35,7 +35,21 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
   const handleDrop = (e: React.DragEvent<HTMLDivElement>, toSquare: Square) => {
     e.preventDefault();
     if (draggedPiece && draggedPiece.square !== toSquare) {
-      onMove({ from: draggedPiece.square, to: toSquare, promotion: 'q' });
+      const isPromotion =
+        draggedPiece.type === 'p' &&
+        ((draggedPiece.color === 'w' && toSquare[1] === '8') ||
+          (draggedPiece.color === 'b' && toSquare[1] === '1'));
+
+      const move: { from: Square; to: Square; promotion?: 'q' } = {
+        from: draggedPiece.square,
+        to: toSquare,
+      };
+
+      if (isPromotion) {
+        move.promotion = 'q';
+      }
+
+      onMove(move);
     }
     setDraggedPiece(null);
   };
