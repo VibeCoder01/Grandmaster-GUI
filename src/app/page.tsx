@@ -28,6 +28,8 @@ export default function GrandmasterGuiPage() {
   const [isPondering, setIsPondering] = useState(false);
   const [consideredMove, setConsideredMove] = useState<string | null>(null);
   const [visualizedVariation, setVisualizedVariation] = useState<Move[] | null>(null);
+  const [isPonderingEnabled, setIsPonderingEnabled] = useState(true);
+  const [isPonderingAnimationEnabled, setIsPonderingAnimationEnabled] = useState(true);
 
   const workerRef = useRef<Worker | null>(null);
   const nextRequestId = useRef(0);
@@ -36,6 +38,7 @@ export default function GrandmasterGuiPage() {
   // Refs to hold the latest state for the worker's onmessage handler
   const fenRef = useRef(fen);
   const isPonderingRef = useRef(isPondering);
+  const isPonderingAnimationEnabledRef = useRef(isPonderingAnimationEnabled);
 
   useEffect(() => {
     fenRef.current = fen;
@@ -44,6 +47,17 @@ export default function GrandmasterGuiPage() {
   useEffect(() => {
     isPonderingRef.current = isPondering;
   }, [isPondering]);
+  
+  useEffect(() => {
+    isPonderingAnimationEnabledRef.current = isPonderingAnimationEnabled;
+  }, [isPonderingAnimationEnabled]);
+
+  useEffect(() => {
+    if (!isPonderingAnimationEnabled) {
+      setVisualizedVariation(null);
+    }
+  }, [isPonderingAnimationEnabled]);
+
 
   const lastMove = moveHistoryIndex > 0 && history.length >= moveHistoryIndex ? history[moveHistoryIndex - 1] : undefined;
 
@@ -74,7 +88,9 @@ export default function GrandmasterGuiPage() {
                 }
 
                 if (validVariation) {
-                    setVisualizedVariation(moveObjects);
+                    if(isPonderingAnimationEnabledRef.current) {
+                      setVisualizedVariation(moveObjects);
+                    }
                     setConsideredMove(moveObjects[0]?.san || null);
                 }
             }
@@ -139,7 +155,7 @@ export default function GrandmasterGuiPage() {
 
   // Effect for pondering on the user's turn
   useEffect(() => {
-    if (turn === 'w' && !isGameOver && !isViewingHistory) {
+    if (isPonderingEnabled && turn === 'w' && !isGameOver && !isViewingHistory) {
       // Don't ponder immediately, give the UI a moment to settle
       const ponderTimeout = setTimeout(() => {
         if (workerRef.current && new Chess(fen).turn() === 'w') {
@@ -157,7 +173,7 @@ export default function GrandmasterGuiPage() {
     } else {
       setIsPondering(false);
     }
-  }, [turn, fen, isGameOver, isViewingHistory, depth, requestBestMove]);
+  }, [turn, fen, isGameOver, isViewingHistory, depth, requestBestMove, isPonderingEnabled]);
 
 
   useEffect(() => {
@@ -197,6 +213,10 @@ export default function GrandmasterGuiPage() {
         isPondering={isPondering}
         consideredMove={consideredMove}
         requestBestMove={requestBestMove}
+        isPonderingEnabled={isPonderingEnabled}
+        onPonderingEnabledChange={setIsPonderingEnabled}
+        isPonderingAnimationEnabled={isPonderingAnimationEnabled}
+        onPonderingAnimationEnabledChange={setIsPonderingAnimationEnabled}
       />
     </main>
   );

@@ -22,6 +22,8 @@ import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Input } from './ui/input';
 import { Slider } from './ui/slider';
+import { Switch } from './ui/switch';
+import { cn } from '@/lib/utils';
 
 interface SidePanelProps {
   status: string;
@@ -39,6 +41,10 @@ interface SidePanelProps {
   isPondering: boolean;
   consideredMove: string | null;
   requestBestMove: (fen: string, depth: number) => Promise<string | null>;
+  isPonderingEnabled: boolean;
+  onPonderingEnabledChange: (checked: boolean) => void;
+  isPonderingAnimationEnabled: boolean;
+  onPonderingAnimationEnabledChange: (checked: boolean) => void;
 }
 
 export default function SidePanel({
@@ -57,6 +63,10 @@ export default function SidePanel({
   isPondering,
   consideredMove,
   requestBestMove,
+  isPonderingEnabled,
+  onPonderingEnabledChange,
+  isPonderingAnimationEnabled,
+  onPonderingAnimationEnabledChange,
 }: SidePanelProps) {
 
   const TurnStatusDisplay = () => {
@@ -144,6 +154,35 @@ export default function SidePanel({
                     </div>
                     <p className="text-sm text-muted-foreground">Higher values are stronger but slower. Max 4 recommended.</p>
                 </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                        <Label htmlFor="pondering-enabled">Enable Pondering</Label>
+                        <p className="text-sm text-muted-foreground">
+                            Allow engine to think on your turn.
+                        </p>
+                    </div>
+                    <Switch
+                        id="pondering-enabled"
+                        checked={isPonderingEnabled}
+                        onCheckedChange={onPonderingEnabledChange}
+                    />
+                </div>
+                <div className="flex items-center justify-between">
+                    <div className={cn("space-y-1", !isPonderingEnabled && "opacity-50")}>
+                        <Label htmlFor="pondering-animation-enabled">Animate Pondering</Label>
+                        <p className="text-sm text-muted-foreground">
+                           Show considered moves on the board.
+                        </p>
+                    </div>
+                    <Switch
+                        id="pondering-animation-enabled"
+                        checked={isPonderingAnimationEnabled}
+                        onCheckedChange={onPonderingAnimationEnabledChange}
+                        disabled={!isPonderingEnabled}
+                    />
+                </div>
+                <Separator />
                 <div className='space-y-2 opacity-50'>
                     <Label htmlFor="engine-url">UCI Engine URL</Label>
                     <Input id="engine-url" placeholder="ws://localhost:8080" disabled />
