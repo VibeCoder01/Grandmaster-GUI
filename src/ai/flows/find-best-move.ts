@@ -50,21 +50,27 @@ Analyze the position and select the best move from the list of legal moves based
 6.  **Pawn Structure:** Avoid creating weaknesses like doubled, isolated, or backward pawns unless there is clear compensation. Aim for a solid pawn structure that supports your pieces and creates potential for attack.
 7.  **Plan Based on the Position:** Formulate a plan based on the pawn structure and piece placement. A good move should fit into a coherent plan. Consider common plans like a kingside attack (especially if the center is closed), a minority attack (using fewer pawns to create weaknesses), or a central break to open the position for your pieces.
 8.  **Trade When Ahead, Avoid When Behind:** If you have a material advantage, seek to simplify the game by trading pieces (especially queens). This reduces your opponent's counter-attacking chances. If you are behind in material, avoid trades and seek to create complications.
-9.  **King and Pawn Endgame Principles:** When few pieces remain, endgame knowledge is paramount.
-    - **A. The Opposition:** The player who does not have to move when kings are facing each other holds the opposition.
-        - *Rule:* If kings are on the same file with one empty square between them (e.g., White King on e4, Black King on e6), the player whose turn it is *not* has the opposition.
-        - *Use:* Use the opposition to force the enemy king back and escort your own pawn to promotion.
-    - **B. Rule of the Square:** A visual method to determine if a king can catch a passed pawn.
-        - *Rule:* Imagine a square from the pawn's current location to its promotion rank, extending sideways to form a square. If the enemy king can step into this square on its move, it can catch the pawn. If not, the pawn will promote.
-    - **C. Key Squares:** Critical squares that, if occupied by your king, guarantee the promotion of your pawn.
-        - *For a pawn on ranks 2-4:* The key squares are the three squares two ranks ahead (e.g., for a pawn on e2, key squares are d4, e4, f4).
-        - *For a pawn on rank 5 or higher:* The six squares in front and to the side of the pawn are key (e.g., for a pawn on e5, key squares are d6, e6, f6, d7, e7, f7). If your king can occupy any of these, you can typically force a win.
-    - **D. King Activity and Position:** In the endgame, the king becomes a powerful attacking and defending piece.
-        - *Winning Setup:* Your king should be in front of your pawn, controlling key squares and using the opposition.
-        - *Losing Setup:* A lone king in front of an enemy pawn without support, or a pawn advanced too far without its king's help.
-        - *General Rule:* Move your king towards the center of the board or towards the area of conflict.
-    - **E. Shouldering:** Use your king to strategically block or "shoulder" the opposing king, preventing it from reaching a critical area of the board (like a passed pawn or weak point).
-    - **F. Outside Passed Pawn:** A passed pawn that is far away from the main cluster of pawns can act as a powerful decoy. It can force the enemy king to travel a long distance to stop it, leaving your own king free to achieve other objectives on the opposite side of the board.
+9.  **Endgame Principles:** When few pieces remain, endgame knowledge is paramount.
+    - **A. King and Pawn Endgames:**
+        - **i. The Opposition:** The player who does not have to move when kings are facing each other holds the opposition.
+            - *Rule:* If kings are on the same file with one empty square between them (e.g., White King on e4, Black King on e6), the player whose turn it is *not* has the opposition.
+            - *Use:* Use the opposition to force the enemy king back and escort your own pawn to promotion.
+        - **ii. Rule of the Square:** A visual method to determine if a king can catch a passed pawn.
+            - *Rule:* Imagine a square from the pawn's current location to its promotion rank, extending sideways to form a square. If the enemy king can step into this square on its move, it can catch the pawn. If not, the pawn will promote.
+        - **iii. Key Squares:** Critical squares that, if occupied by your king, guarantee the promotion of your pawn.
+            - *For a pawn on ranks 2-4:* The key squares are the three squares two ranks ahead (e.g., for a pawn on e2, key squares are d4, e4, f4).
+            - *For a pawn on rank 5 or higher:* The six squares in front and to the side of the pawn are key (e.g., for a pawn on e5, key squares are d6, e6, f6, d7, e7, f7). If your king can occupy any of these, you can typically force a win.
+        - **iv. King Activity and Position:** In the endgame, the king becomes a powerful attacking and defending piece.
+            - *Winning Setup:* Your king should be in front of your pawn, controlling key squares and using the opposition.
+            - *Losing Setup:* A lone king in front of an enemy pawn without support, or a pawn advanced too far without its king's help.
+            - *General Rule:* Move your king towards the center of the board or towards the area of conflict.
+        - **v. Shouldering:** Use your king to strategically block or "shoulder" the opposing king, preventing it from reaching a critical area of the board (like a passed pawn or weak point).
+        - **vi. Outside Passed Pawn:** A passed pawn that is far away from the main cluster of pawns can act as a powerful decoy. It can force the enemy king to travel a long distance to stop it, leaving your own king free to achieve other objectives on the opposite side of the board.
+    - **B. Basic Piece Endgames:**
+        - **i. King and Rook vs. King:** The goal is to force the opposing king to the edge of the board to deliver a standard checkmate.
+        - **ii. King and Pawn vs. King and Bishop/Knight:** A bishop usually draws against a pawn unless the pawn is close to queening and the bishop cannot control the promotion square. A knight is generally worse than a bishop at stopping passed pawns and may fail to stop a rook pawn from queening.
+        - **iii. Wrong Bishop:** This is a specific drawing concept. If a player has a rook pawn and a bishop that does not control the pawn's promotion square, the game is a draw if the defending king can reach the promotion corner (e.g., White has an a-pawn, a dark-squared bishop, and the Black king reaches a8).
+        - **iv. Rook and Pawn vs. Rook:** A highly technical but very common endgame. Knowledge of the Lucena Position (a winning method) and the Philidor Position (a drawing method) is essential.
 10. **Always Have a Reason:** Don't play "hope chess" by making moves hoping your opponent blunders. Every move should have a purpose. Constantly ask, "What is my opponent threatening? What is my plan? How does my opponent respond to my plan?" and choose the move that best addresses these questions.
 
 Based on a holistic evaluation of these principles, choose the single best move from the provided list of legal moves and return it.
