@@ -1,4 +1,4 @@
-import { Chess } from 'chess.js';
+import { Chess, type Square } from 'chess.js';
 
 export async function getBestMove(fen: string): Promise<string | null> {
   return new Promise(resolve => {
@@ -10,21 +10,24 @@ export async function getBestMove(fen: string): Promise<string | null> {
           return;
         }
 
-        // Get all legal moves with details
         const moves = game.moves({ verbose: true });
         
-        // Find all moves that are captures
         const captureMoves = moves.filter(move => move.flags.includes('c'));
-
-        let bestMove;
         if (captureMoves.length > 0) {
-          // If there are captures, pick a random one
-          bestMove = captureMoves[Math.floor(Math.random() * captureMoves.length)].san;
-        } else {
-          // Otherwise, pick any random legal move
-          bestMove = moves[Math.floor(Math.random() * moves.length)].san;
+          const bestMove = captureMoves[Math.floor(Math.random() * captureMoves.length)].san;
+          resolve(bestMove);
+          return;
         }
         
+        const centerSquares: Square[] = ['e4', 'd4', 'e5', 'd5'];
+        const centerMoves = moves.filter(move => centerSquares.includes(move.to));
+        if (centerMoves.length > 0) {
+          const bestMove = centerMoves[Math.floor(Math.random() * centerMoves.length)].san;
+          resolve(bestMove);
+          return;
+        }
+
+        const bestMove = moves[Math.floor(Math.random() * moves.length)].san;
         resolve(bestMove);
       } catch (e) {
         console.error("Error in mock engine:", e);
