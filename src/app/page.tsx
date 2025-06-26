@@ -33,9 +33,10 @@ export default function GrandmasterGuiPage() {
 
   const workerRef = useRef<Worker | null>(null);
   const nextRequestId = useRef(0);
-  const pendingRequests = useRef(new Map<number, (value: string | null) => void>());
+  const pendingRequests = useRef(new Map<number, { resolve: (value: string | null) => void, options: { isPonder: boolean } }>());
   const currentSearchId = useRef<number | null>(null);
   const searchFenMapRef = useRef(new Map<number, string>());
+  const ponderCache = useRef(new Map<string, string | null>());
 
   useEffect(() => {
     const worker = new Worker(new URL('../lib/engine.worker.ts', import.meta.url));
@@ -44,9 +45,10 @@ export default function GrandmasterGuiPage() {
     worker.onmessage = (e: MessageEvent<{id: number, move?: string | null, variation?: string[], type: 'interim' | 'final' | 'exploring'}>) => {
         const { id, move, variation, type } = e.data;
         
-        if (id !== currentSearchId.current) {
-            return;
-        }
+        const request = pendingRequests.current.get(id);
+        if (!request) return;
+
+        const { isPonder } = request.options;
 
         const handleVariation = (variationData: string[], isBest: boolean) => {
              if (variationData && variationData.length > 0) {
@@ -81,19 +83,30 @@ export default function GrandmasterGuiPage() {
             }
         }
 
-        if (type === 'exploring') {
-          handleVariation(variation!, false);
-        } else if (type === 'interim') {
-          handleVariation(variation!, true);
-        } else if (type === 'final') {
-            setExploredVariation(null);
-            const resolve = pendingRequests.current.get(id);
+        // Only update UI for non-ponder ("thinking") requests that are not stale.
+        if (!isPonder && id === currentSearchId.current) {
+            if (type === 'exploring') {
+            handleVariation(variation!, false);
+            } else if (type === 'interim') {
+            handleVariation(variation!, true);
+            }
+        }
+
+        if (type === 'final') {
+            if (!isPonder && id === currentSearchId.current) {
+                setExploredVariation(null);
+            }
+            
+            const { resolve } = request;
             if (resolve) {
                 resolve(move ?? null);
                 pendingRequests.current.delete(id);
             }
             searchFenMapRef.current.delete(id);
-            currentSearchId.current = null;
+
+            if (!isPonder && id === currentSearchId.current) {
+                currentSearchId.current = null;
+            }
         }
     };
     
@@ -103,22 +116,30 @@ export default function GrandmasterGuiPage() {
     }
   }, []);
 
-  const requestBestMove = useCallback((fen: string, depth: number): Promise<string | null> => {
+  const requestBestMove = useCallback((fen: string, depth: number, options: { isPonder: boolean } = { isPonder: false }): Promise<string | null> => {
     const worker = workerRef.current;
     if (!worker) {
         return Promise.resolve(null);
     }
     
-    setBestVariation(null);
-    setExploredVariation(null);
-    pendingRequests.current.clear();
-
     const id = nextRequestId.current++;
-    currentSearchId.current = id;
     searchFenMapRef.current.set(id, fen);
 
+    // If it's a "thinking" request, set it as the current one and cancel any previous "thinking" request
+    if (!options.isPonder) {
+      setBestVariation(null);
+      setExploredVariation(null);
+      
+      if (currentSearchId.current !== null && pendingRequests.current.has(currentSearchId.current)) {
+          const oldRequest = pendingRequests.current.get(currentSearchId.current)!;
+          oldRequest.resolve(null); // Resolve promise of old request to unblock it
+          pendingRequests.current.delete(currentSearchId.current);
+      }
+      currentSearchId.current = id;
+    }
+
     const promise = new Promise<string | null>((resolve) => {
-        pendingRequests.current.set(id, resolve);
+        pendingRequests.current.set(id, { resolve, options });
     });
 
     worker.postMessage({ id, fen, depth });
@@ -127,45 +148,77 @@ export default function GrandmasterGuiPage() {
   }, []);
 
 
+  // This useEffect handles the engine's move (`turn === 'b'`)
   useEffect(() => {
     if (turn === 'b' && !isGameOver && !isViewingHistory) {
-      setIsPondering(false);
-      const makeEngineMove = async () => {
-        setIsThinking(true);
-        const bestMove = await requestBestMove(fen, depth);
-        if (currentSearchId.current === null && bestMove) {
-          makeMove(bestMove);
-        }
-        setIsThinking(false);
-      };
-      makeEngineMove();
+      const cachedMove = ponderCache.current.get(fen);
+      
+      if (isPonderingEnabled && cachedMove) {
+          // Move instantly using the cached response
+          makeMove(cachedMove);
+      } else {
+        // Fallback to "thinking" if no cached move is available
+        setIsPondering(false); // Ensure pondering UI is off
+        const makeEngineMove = async () => {
+          setIsThinking(true);
+          const bestMove = await requestBestMove(fen, depth, { isPonder: false });
+          // Only make the move if the search wasn't cancelled in the meantime
+          if (currentSearchId.current === null && bestMove) {
+            makeMove(bestMove);
+          }
+          setIsThinking(false);
+        };
+        makeEngineMove();
+      }
     } else {
         setIsThinking(false);
     }
-  }, [turn, isGameOver, fen, makeMove, isViewingHistory, depth, requestBestMove]);
+  }, [turn, isGameOver, fen, makeMove, isViewingHistory, depth, requestBestMove, isPonderingEnabled]);
 
+  // This useEffect handles pondering on the user's turn (`turn === 'w'`)
   useEffect(() => {
-    if (isPonderingEnabled && turn === 'w' && !isGameOver && !isViewingHistory) {
-      let isCancelled = false;
-      const ponderTimeout = setTimeout(() => {
-        if (workerRef.current && new Chess(fen).turn() === 'w' && !isCancelled) {
-          setIsPondering(true);
-          requestBestMove(fen, depth).then(() => {
-            if (!isCancelled) {
-              setIsPondering(false);
-            }
-          });
-        }
-      }, 500);
+    let isCancelled = false;
 
-      return () => {
-        isCancelled = true;
-        clearTimeout(ponderTimeout);
-        setIsPondering(false);
+    if (isPonderingEnabled && turn === 'w' && !isGameOver && !isViewingHistory) {
+      const ponder = async () => {
+        // A short delay so we don't fire on every minor state change
+        await new Promise(resolve => setTimeout(resolve, 200));
+        if (isCancelled || new Chess(fen).turn() !== 'w') return;
+        
+        setIsPondering(true);
+        ponderCache.current.clear();
+
+        const rootGame = new Chess(fen);
+        const legalMoves = rootGame.moves({ verbose: true });
+
+        const ponderJobs = legalMoves.map(async (move) => {
+            if (isCancelled) return;
+            const gameForMove = new Chess(fen);
+            gameForMove.move(move.san);
+            const fenAfterMove = gameForMove.fen();
+            
+            const counterMove = await requestBestMove(fenAfterMove, depth, { isPonder: true });
+            
+            if (isCancelled) return;
+            ponderCache.current.set(fenAfterMove, counterMove);
+        });
+
+        await Promise.all(ponderJobs);
+
+        if (!isCancelled) {
+          setIsPondering(false);
+        }
       };
+      
+      ponder();
     } else {
       setIsPondering(false);
     }
+
+    return () => {
+      isCancelled = true;
+      setIsPondering(false);
+    };
   }, [turn, fen, isGameOver, isViewingHistory, depth, requestBestMove, isPonderingEnabled]);
 
 
