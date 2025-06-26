@@ -34,7 +34,7 @@ const prompt = ai.definePrompt({
   name: 'findBestMovePrompt',
   input: {schema: FindBestMoveInputSchema},
   output: {schema: FindBestMoveOutputSchema},
-  prompt: `You are a chess engine. Your task is to select the best move from a list of legal moves.
+  prompt: `You are a chess grandmaster. Your task is to select the best move from a list of legal moves.
 The current state of the board is provided in FEN notation. The player to move is determined by the FEN string.
 
 Board State (FEN): {{{boardStateFen}}}
@@ -43,14 +43,15 @@ Legal Moves: {{#each legalMoves}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each
 Analyze the position and select the best move from the list of legal moves based on the following strategic principles, in order of importance:
 
 1.  **Tactics and Material:** This is the most important principle. Always look for tactical opportunities like checks, captures, threats, forks, pins, skewers, and discovered attacks. Prioritize moves that win material or create immediate threats to the opponent's pieces.
-2.  **Trade When Ahead, Avoid When Behind:** If you have a material advantage, seek to simplify the game by trading pieces (especially queens). This reduces your opponent's counter-attacking chances. If you are behind in material, avoid trades and seek to create complications.
-3.  **King Safety:** Castle early (usually kingside) to safeguard your king and connect your rooks. Avoid leaving the king in the center or exposing it with reckless pawn pushes.
-4.  **Develop Pieces Efficiently:** Develop knights and bishops from their starting squares early. Generally, knights before bishops. Avoid moving the same piece multiple times in the opening.
-5.  **Use All Your Pieces:** Bring every piece into the game. Don't let pieces sit idle on their starting squares. Place rooks on open or semi-open files where they can control key lines. Centralize your queen once initial threats are managed, allowing it to influence the entire board.
-6.  **Control the Center:** Occupy or influence the central squares (e4, d4, e5, d5). This gives your pieces greater mobility and influence over the game.
-7.  **Pawn Structure:** Avoid creating weaknesses like doubled, isolated, or backward pawns. Aim for a solid pawn structure that supports your pieces.
+2.  **King Safety:** A safe king is the foundation of any good position. Castle early (usually kingside) to safeguard your king and connect your rooks. Avoid leaving the king in the center or exposing it with reckless pawn pushes.
+3.  **Develop Pieces Efficiently:** Develop knights and bishops from their starting squares early. Generally, knights before bishops. Avoid moving the same piece multiple times in the opening. Do not bring the queen out too early.
+4.  **Control the Center:** Occupy or influence the central squares (e4, d4, e5, d5). This gives your pieces greater mobility and influence over the game.
+5.  **Use All Your Pieces:** Bring every piece into the game. Don't let pieces sit idle on their starting squares. Place rooks on open or semi-open files where they can control key lines. Centralize your queen once initial threats are managed.
+6.  **Pawn Structure:** Avoid creating weaknesses like doubled, isolated, or backward pawns unless there is clear compensation. Aim for a solid pawn structure that supports your pieces and creates potential for attack.
+7.  **Plan Based on the Position:** Formulate a plan based on the pawn structure and piece placement. A good move should fit into a coherent plan. Consider common plans like a kingside attack (especially if the center is closed), a minority attack (using fewer pawns to create weaknesses), or a central break to open the position for your pieces.
+8.  **Trade When Ahead, Avoid When Behind:** If you have a material advantage, seek to simplify the game by trading pieces (especially queens). This reduces your opponent's counter-attacking chances. If you are behind in material, avoid trades and seek to create complications.
 
-Based on these principles, choose the single best move from the provided list of legal moves and return it.
+Based on a holistic evaluation of these principles, choose the single best move from the provided list of legal moves and return it.
 `,
 });
 
