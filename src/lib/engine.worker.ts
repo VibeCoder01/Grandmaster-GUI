@@ -133,7 +133,7 @@ const minimax = (game: Chess, depth: number, alpha: number, beta: number, isMaxi
     }
 };
 
-const findBestMove = (fen: string, depth: number): string | null => {
+const findBestMove = (fen: string, depth: number, id: number): string | null => {
     const game = new Chess(fen);
     if (game.isGameOver()) return null;
 
@@ -156,11 +156,13 @@ const findBestMove = (fen: string, depth: number): string | null => {
             if (boardValue > bestValue) {
                 bestValue = boardValue;
                 bestMove = move;
+                self.postMessage({ type: 'interim', id, move: bestMove });
             }
         } else {
             if (boardValue < bestValue) {
                 bestValue = boardValue;
                 bestMove = move;
+                self.postMessage({ type: 'interim', id, move: bestMove });
             }
         }
     }
@@ -173,6 +175,6 @@ const findBestMove = (fen: string, depth: number): string | null => {
 
 self.onmessage = (e: MessageEvent<{ id: number, fen: string, depth: number }>) => {
     const { id, fen, depth } = e.data;
-    const move = findBestMove(fen, depth);
-    self.postMessage({ id, move });
+    const move = findBestMove(fen, depth, id);
+    self.postMessage({ type: 'final', id, move });
 };

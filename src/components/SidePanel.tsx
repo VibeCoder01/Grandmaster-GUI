@@ -37,6 +37,8 @@ interface SidePanelProps {
   onDepthChange: (depth: number) => void;
   isPondering: boolean;
   isThinking: boolean;
+  consideredMove: string | null;
+  requestBestMove: (fen: string, depth: number) => Promise<string | null>;
 }
 
 export default function SidePanel({
@@ -53,33 +55,29 @@ export default function SidePanel({
   onDepthChange,
   isPondering,
   isThinking,
+  consideredMove,
+  requestBestMove,
 }: SidePanelProps) {
 
   const TurnStatusDisplay = () => {
-    const turnText = turn === 'w' ? "White's Turn" : "Black's Turn";
-
     if (isGameOver) {
       return null;
     }
 
-    if (isThinking) {
-        return (
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                <span className="text-xs font-medium">Thinking...</span>
-            </div>
-        );
+    const baseText = isThinking ? "Thinking..." : isPondering ? "Pondering..." : null;
+
+    if (isThinking || isPondering) {
+      return (
+        <div className={`flex items-center gap-1.5 text-muted-foreground ${isPondering ? 'animate-pulse' : ''}`}>
+            <Loader2 className="h-3 w-3 animate-spin" />
+            <span className="text-xs font-medium">
+              {baseText}
+              {consideredMove && <span className="font-mono ml-1">{consideredMove}</span>}
+            </span>
+        </div>
+      );
     }
 
-    if (isPondering) {
-        return (
-            <div className="flex items-center gap-1.5 text-muted-foreground animate-pulse">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                <span className="text-xs font-medium">Pondering...</span>
-            </div>
-        );
-    }
-    
     if (turn === 'w' && !isViewingHistory) {
         return (
             <div className="flex items-center gap-1.5 text-muted-foreground">
@@ -88,8 +86,9 @@ export default function SidePanel({
             </div>
         );
     }
-
+    
     // Default case: Show whose turn it is
+    const turnText = turn === 'w' ? "White's Turn" : "Black's Turn";
     return <Badge variant="outline">{turnText}</Badge>;
   }
 

@@ -1,10 +1,10 @@
+
 "use client";
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Lightbulb, Loader2 } from 'lucide-react';
-import { getBestMove } from '@/lib/engine';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -18,33 +18,52 @@ export default function AiHint({ fen, isGameOver, isViewingHistory }: AiHintProp
   const [isLoading, setIsLoading] = useState(false);
   const [hint, setHint] = useState<{ move: string } | null>(null);
   const { toast } = useToast();
+  const [worker, setWorker] = useState<Worker | null>(null);
+
+  // Memoize worker creation
+  const getWorker = useCallback(() => {
+    if (worker) return worker;
+    const newWorker = new Worker(new URL('../lib/engine.worker.ts', import.meta.url));
+    setWorker(newWorker);
+    return newWorker;
+  }, [worker]);
+
 
   const getHint = async () => {
     setIsLoading(true);
     setHint(null);
-    try {
-      // Use a fixed depth of 3 for hints for a good balance of speed and quality.
-      const engineMove = await getBestMove(fen, 3);
-      if (!engineMove) {
+
+    const hintWorker = getWorker();
+    
+    const id = Math.random(); // Unique ID for this request
+
+    hintWorker.onmessage = (e: MessageEvent<{id: number, move: string | null, type: 'final'}>) => {
+        if (e.data.id === id && e.data.type === 'final') {
+             if (!e.data.move) {
+                toast({
+                    variant: "destructive",
+                    title: "Game Over",
+                    description: "No moves available to analyze.",
+                });
+            } else {
+                setHint({ move: e.data.move });
+            }
+            setIsLoading(false);
+        }
+    };
+    
+    hintWorker.onerror = (err) => {
+        console.error("Hint worker error:", err);
         toast({
             variant: "destructive",
-            title: "Game Over",
-            description: "No moves available to analyze.",
+            title: "Error",
+            description: "Could not fetch engine-powered hint.",
         });
         setIsLoading(false);
-        return;
-      }
-      setHint({ move: engineMove });
-    } catch (error) {
-      console.error("Failed to get engine hint:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Could not fetch engine-powered hint.",
-      });
-    } finally {
-      setIsLoading(false);
     }
+    
+    // Use a fixed depth of 3 for hints for a good balance of speed and quality.
+    hintWorker.postMessage({ id, fen, depth: 3 });
   };
 
   return (
