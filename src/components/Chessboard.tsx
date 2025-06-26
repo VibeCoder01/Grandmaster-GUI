@@ -157,11 +157,11 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
       };
 
       if (isPondering) {
-          // A cool, bluish tint for pondering.
-          style.filter = 'sepia(60%) hue-rotate(170deg) saturate(200%) brightness(0.9)';
+          // A cool, deep blue tint for pondering.
+          style.filter = 'sepia(60%) hue-rotate(180deg) saturate(500%) brightness(0.7)';
       } else if (isThinking) {
-          // A warm, reddish tint for thinking.
-          style.filter = 'sepia(60%) hue-rotate(320deg) saturate(300%) brightness(0.9)';
+          // A warm, intense red tint for thinking.
+          style.filter = 'sepia(80%) hue-rotate(330deg) saturate(400%) brightness(0.8)';
       }
       
       return style;
