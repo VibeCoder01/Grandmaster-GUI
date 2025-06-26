@@ -156,20 +156,25 @@ export default function GrandmasterGuiPage() {
   // Effect for pondering on the user's turn
   useEffect(() => {
     if (isPonderingEnabled && turn === 'w' && !isGameOver && !isViewingHistory) {
-      // Don't ponder immediately, give the UI a moment to settle
+      let isCancelled = false;
       const ponderTimeout = setTimeout(() => {
-        if (workerRef.current && new Chess(fen).turn() === 'w') {
-            setIsPondering(true);
-            // Start a search for the best move. We don't care about the final
-            // result, only the 'interim' messages that update the 'consideredMove' state.
-            requestBestMove(fen, depth);
+        if (workerRef.current && new Chess(fen).turn() === 'w' && !isCancelled) {
+          setIsPondering(true);
+          // Start a search for the best move. When it completes, the engine
+          // is no longer pondering, but waiting for the user's move.
+          requestBestMove(fen, depth).then(() => {
+            if (!isCancelled) {
+              setIsPondering(false);
+            }
+          });
         }
       }, 500); // 500ms delay before pondering starts
 
       return () => {
+        isCancelled = true;
         clearTimeout(ponderTimeout);
         setIsPondering(false);
-      }
+      };
     } else {
       setIsPondering(false);
     }
