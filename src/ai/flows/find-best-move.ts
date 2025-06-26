@@ -63,6 +63,8 @@ Analyze the position and select the best move from the list of legal moves based
         - *Winning Setup:* Your king should be in front of your pawn, controlling key squares and using the opposition.
         - *Losing Setup:* A lone king in front of an enemy pawn without support, or a pawn advanced too far without its king's help.
         - *General Rule:* Move your king towards the center of the board or towards the area of conflict.
+    - **E. Shouldering:** Use your king to strategically block or "shoulder" the opposing king, preventing it from reaching a critical area of the board (like a passed pawn or weak point).
+    - **F. Outside Passed Pawn:** A passed pawn that is far away from the main cluster of pawns can act as a powerful decoy. It can force the enemy king to travel a long distance to stop it, leaving your own king free to achieve other objectives on the opposite side of the board.
 10. **Always Have a Reason:** Don't play "hope chess" by making moves hoping your opponent blunders. Every move should have a purpose. Constantly ask, "What is my opponent threatening? What is my plan? How does my opponent respond to my plan?" and choose the move that best addresses these questions.
 
 Based on a holistic evaluation of these principles, choose the single best move from the provided list of legal moves and return it.
