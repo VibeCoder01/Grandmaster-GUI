@@ -148,7 +148,7 @@ const findBestMove = async (fen: string, depth: number, id: number, isPonder: bo
         return;
     }
     if (moves.length === 1) {
-        if (!isPonder) self.postMessage({ type: 'progress', id, progress: 100 });
+        self.postMessage({ type: 'progress', id, progress: 100 });
         self.postMessage({ type: 'interim', id, variation: [moves[0]] });
         self.postMessage({ type: 'final', id, move: moves[0] });
         return;
@@ -189,14 +189,9 @@ const findBestMove = async (fen: string, depth: number, id: number, isPonder: bo
                 }
             }
 
-            if (!isPonder) {
-                movesAnalyzed++;
-                const overallProgress = Math.round((((currentDepth - 1) / depth) + (movesAnalyzed / moveCount / depth)) * 100);
-                self.postMessage({ type: 'progress', id, progress: overallProgress });
-            }
-
-            // Yield to the event loop to allow messages to be sent.
-            await new Promise(resolve => setTimeout(resolve, 0));
+            movesAnalyzed++;
+            const overallProgress = Math.round((((currentDepth - 1) / depth) + (movesAnalyzed / moveCount / depth)) * 100);
+            self.postMessage({ type: 'progress', id, progress: overallProgress });
         }
         
         if (currentBestMoveForDepth) {
