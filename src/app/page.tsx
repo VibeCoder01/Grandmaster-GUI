@@ -30,6 +30,7 @@ export default function GrandmasterGuiPage() {
   const [exploredVariation, setExploredVariation] = useState<Move[] | null>(null);
   const [isPonderingEnabled, setIsPonderingEnabled] = useState(true);
   const [isPonderingAnimationEnabled, setIsPonderingAnimationEnabled] = useState(true);
+  const [progress, setProgress] = useState(0);
 
   const workerRef = useRef<Worker | null>(null);
   const nextRequestId = useRef(0);
@@ -42,11 +43,19 @@ export default function GrandmasterGuiPage() {
     const worker = new Worker(new URL('../lib/engine.worker.ts', import.meta.url));
     workerRef.current = worker;
 
-    worker.onmessage = (e: MessageEvent<{id: number, move?: string | null, variation?: string[], type: 'interim' | 'final' | 'exploring'}>) => {
-        const { id, move, variation, type } = e.data;
+    worker.onmessage = (e: MessageEvent<{id: number, move?: string | null, variation?: string[], type: string, progress?: number}>) => {
+        const { id, move, variation, type, progress } = e.data;
         
         const request = pendingRequests.current.get(id);
         if (!request) return;
+
+        if (type === 'progress') {
+            // Progress is only for the current thinking search, as pondering progress is calculated locally.
+            if (!request.options.isPonder && id === currentSearchId.current) {
+                setProgress(progress!);
+            }
+            return;
+        }
 
         const { isPonder } = request.options;
 
@@ -86,7 +95,7 @@ export default function GrandmasterGuiPage() {
         // Update UI for thinking and pondering animations
         if (type === 'exploring') {
             // Animate for both pondering and the current thinking search
-            if (isPonder || id === currentSearchId.current) {
+            if (isPonderingAnimationEnabled && (isPonder || id === currentSearchId.current)) {
                 handleVariation(variation!, false);
             }
         } else if (type === 'interim') {
@@ -99,6 +108,7 @@ export default function GrandmasterGuiPage() {
         if (type === 'final') {
             if (!isPonder && id === currentSearchId.current) {
                 setExploredVariation(null);
+                setProgress(100);
             }
             
             const { resolve } = request;
@@ -118,7 +128,7 @@ export default function GrandmasterGuiPage() {
         worker.terminate();
         currentSearchId.current = null;
     }
-  }, []);
+  }, [isPonderingAnimationEnabled]);
 
   const requestBestMove = useCallback((fen: string, depth: number, options: { isPonder: boolean } = { isPonder: false }): Promise<string | null> => {
     const worker = workerRef.current;
@@ -165,12 +175,14 @@ export default function GrandmasterGuiPage() {
         setIsPondering(false); // Ensure pondering UI is off
         const makeEngineMove = async () => {
           setIsThinking(true);
+          setProgress(0);
           const bestMove = await requestBestMove(fen, depth, { isPonder: false });
           // Only make the move if the search wasn't cancelled in the meantime
           if (currentSearchId.current === null && bestMove) {
             makeMove(bestMove);
           }
           setIsThinking(false);
+          setProgress(0);
         };
         makeEngineMove();
       }
@@ -190,10 +202,12 @@ export default function GrandmasterGuiPage() {
         if (isCancelled || new Chess(fen).turn() !== 'w') return;
         
         setIsPondering(true);
+        setProgress(0);
         ponderCache.current.clear();
 
         const rootGame = new Chess(fen);
         const legalMoves = rootGame.moves({ verbose: true });
+        let ponderJobsCompleted = 0;
 
         const ponderJobs = legalMoves.map(async (move) => {
             if (isCancelled) return;
@@ -205,12 +219,19 @@ export default function GrandmasterGuiPage() {
             
             if (isCancelled) return;
             ponderCache.current.set(fenAfterMove, counterMove);
+            
+            ponderJobsCompleted++;
+            if (!isCancelled) {
+              setProgress(Math.round((ponderJobsCompleted / legalMoves.length) * 100));
+            }
         });
 
         await Promise.all(ponderJobs);
 
         if (!isCancelled) {
           setIsPondering(false);
+          setExploredVariation(null);
+          setProgress(0);
         }
       };
       
@@ -222,6 +243,7 @@ export default function GrandmasterGuiPage() {
     return () => {
       isCancelled = true;
       setIsPondering(false);
+      setProgress(0);
     };
   }, [turn, fen, isGameOver, isViewingHistory, depth, requestBestMove, isPonderingEnabled]);
 
@@ -247,7 +269,7 @@ export default function GrandmasterGuiPage() {
         isViewingHistory={isViewingHistory}
         lastMove={lastMove}
         fen={fen}
-        visualizedVariation={isPonderingAnimationEnabled ? exploredVariation : null}
+        visualizedVariation={exploredVariation}
         isThinking={isThinking}
         isPondering={isPondering}
       />
@@ -270,6 +292,7 @@ export default function GrandmasterGuiPage() {
         onPonderingEnabledChange={setIsPonderingEnabled}
         isPonderingAnimationEnabled={isPonderingAnimationEnabled}
         onPonderingAnimationEnabledChange={setIsPonderingAnimationEnabled}
+        progress={progress}
       />
     </main>
   );

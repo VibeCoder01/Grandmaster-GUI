@@ -24,6 +24,7 @@ import { Input } from './ui/input';
 import { Slider } from './ui/slider';
 import { Switch } from './ui/switch';
 import { cn } from '@/lib/utils';
+import { Progress } from './ui/progress';
 
 interface SidePanelProps {
   status: string;
@@ -44,6 +45,7 @@ interface SidePanelProps {
   onPonderingEnabledChange: (checked: boolean) => void;
   isPonderingAnimationEnabled: boolean;
   onPonderingAnimationEnabledChange: (checked: boolean) => void;
+  progress: number;
 }
 
 export default function SidePanel({
@@ -65,6 +67,7 @@ export default function SidePanel({
   onPonderingEnabledChange,
   isPonderingAnimationEnabled,
   onPonderingAnimationEnabledChange,
+  progress,
 }: SidePanelProps) {
 
   const TurnStatusDisplay = () => {
@@ -76,11 +79,12 @@ export default function SidePanel({
 
     if (isThinking) {
       return (
-        <div className="flex flex-col items-start gap-1 text-muted-foreground text-xs">
+        <div className="flex w-full flex-col gap-2 text-xs text-muted-foreground">
           <div className="flex items-center gap-1.5">
             <Loader2 className="h-3 w-3 animate-spin" />
             <span className="font-medium">Thinking...</span>
           </div>
+          <Progress value={progress} className="h-1 w-full" />
           {variationString && (
             <p className="font-mono ml-[1.125rem] break-all leading-tight">
               {variationString}
@@ -92,11 +96,12 @@ export default function SidePanel({
     
     if (isPondering) {
        return (
-        <div className="flex flex-col items-start gap-1 text-muted-foreground text-xs">
+        <div className="flex w-full flex-col gap-2 text-xs text-muted-foreground">
           <div className="flex items-center gap-1.5">
             <Loader2 className="h-3 w-3 animate-spin" />
             <span className="font-medium">Pondering...</span>
           </div>
+          <Progress value={progress} className="h-1 w-full" />
           {variationString && (
             <p className="font-mono ml-[1.125rem] break-all leading-tight">
               {variationString}
@@ -199,9 +204,9 @@ export default function SidePanel({
             </DialogContent>
           </Dialog>
         </div>
-        <div className="flex justify-between items-start text-sm min-h-5">
+        <div className="flex justify-between items-start text-sm min-h-10">
           <Badge variant={isGameOver ? "destructive" : "secondary"} className="capitalize">{status}</Badge>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-end gap-2 flex-grow">
             <TurnStatusDisplay />
           </div>
         </div>
