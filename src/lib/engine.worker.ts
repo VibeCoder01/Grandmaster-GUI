@@ -135,7 +135,7 @@ const minimax = (game: Chess, depth: number, alpha: number, beta: number, isMaxi
     return { score: bestScore, pv: bestPV };
 };
 
-const findBestMove = (fen: string, depth: number, id: number) => {
+const findBestMove = async (fen: string, depth: number, id: number) => {
     const game = new Chess(fen);
     if (game.isGameOver()) {
         self.postMessage({ type: 'final', id, move: null });
@@ -157,7 +157,6 @@ const findBestMove = (fen: string, depth: number, id: number) => {
     let bestMove: string | null = null;
     const isMaximizingPlayer = game.turn() === 'w';
 
-    // Iterative deepening loop
     for (let currentDepth = 1; currentDepth <= depth; currentDepth++) {
         let bestValue = isMaximizingPlayer ? -Infinity : Infinity;
         let currentBestMoveForDepth: string | null = null;
@@ -165,7 +164,6 @@ const findBestMove = (fen: string, depth: number, id: number) => {
         
         for (const move of moves) {
             game.move(move);
-            // We call minimax with `currentDepth - 1` because the first move is already made.
             const result = minimax(game, currentDepth - 1, -Infinity, Infinity, !isMaximizingPlayer);
             game.undo();
 
@@ -189,15 +187,15 @@ const findBestMove = (fen: string, depth: number, id: number) => {
             }
         }
         
-        // After searching all moves at the current depth, update the overall best move and post the best variation found so far.
         if (currentBestMoveForDepth) {
             bestMove = currentBestMoveForDepth;
             self.postMessage({ type: 'interim', id, variation: bestVariationForDepth });
         }
 
-        // Report progress after each full depth iteration is complete.
         const overallProgress = (currentDepth / depth) * 100;
         self.postMessage({ type: 'progress', id, progress: overallProgress });
+        
+        await new Promise(resolve => setTimeout(resolve, 0));
     }
     
     const finalMove = bestMove || moves[Math.floor(Math.random() * moves.length)];

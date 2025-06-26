@@ -1,23 +1,23 @@
+
 "use client";
 
-import { useReducer, useCallback, useMemo } from 'react';
+import { useReducer, useCallback, useMemo, useEffect } from 'react';
 import { Chess, type Square, type Piece as PieceInfo, type Move } from 'chess.js';
 
 type GameState = {
-  // fen is the single source of truth for the current board state being displayed.
   fen: string;
-  // history is the full history of the game.
   history: Move[];
-  // isGameOver is true only when the main game line is over.
   isGameOver: boolean;
-  // moveHistoryIndex tracks which point in the history we are viewing.
   moveHistoryIndex: number;
+  whiteTime: number; // in seconds
+  blackTime: number; // in seconds
 };
 
 type Action =
   | { type: 'MOVE'; move: string | { from: Square; to: Square; promotion?: string } }
   | { type: 'SET_HISTORY_INDEX'; index: number }
-  | { type: 'RESET' };
+  | { type: 'RESET' }
+  | { type: 'TICK' };
 
 function getStatus(game: Chess): string {
   if (game.isCheckmate()) return 'Checkmate';
@@ -36,18 +36,20 @@ function createInitialState(): GameState {
         history: [],
         isGameOver: false,
         moveHistoryIndex: 0,
+        whiteTime: 300, // 5 minutes
+        blackTime: 300,
     };
 }
 
 function gameReducer(state: GameState, action: Action): GameState {
   switch (action.type) {
     case 'MOVE': {
-      // A move can only be made if we are at the end of the history.
       if (state.moveHistoryIndex !== state.history.length) return state;
 
       const game = new Chess(state.fen);
       try {
         const moveResult = game.move(action.move);
+        if (!moveResult) return state; // Illegal move
         const newHistory = [...state.history, moveResult];
         return {
           ...state,
@@ -57,22 +59,45 @@ function gameReducer(state: GameState, action: Action): GameState {
           moveHistoryIndex: newHistory.length,
         };
       } catch (e) {
-        // Invalid move, return current state without crashing.
         return state;
       }
     }
     case 'SET_HISTORY_INDEX': {
       const newIndex = Math.max(0, Math.min(action.index, state.history.length));
-      const newFen = newIndex > 0 ? state.history[newIndex - 1].after : new Chess().fen();
+      if (newIndex === state.moveHistoryIndex) return state;
 
+      const tempGame = new Chess();
+      for(let i = 0; i < newIndex; i++) {
+        tempGame.move(state.history[i]);
+      }
+      
       return {
         ...state,
-        fen: newFen,
+        fen: tempGame.fen(),
         moveHistoryIndex: newIndex,
       };
     }
     case 'RESET':
       return createInitialState();
+      
+    case 'TICK': {
+      if (state.isGameOver || state.moveHistoryIndex < state.history.length) return state;
+      
+      const game = new Chess(state.fen);
+      const turn = game.turn();
+
+      const newWhiteTime = turn === 'w' ? state.whiteTime - 1 : state.whiteTime;
+      const newBlackTime = turn === 'b' ? state.blackTime - 1 : state.blackTime;
+      
+      const isTimeout = newWhiteTime < 0 || newBlackTime < 0;
+
+      return {
+        ...state,
+        whiteTime: Math.max(0, newWhiteTime),
+        blackTime: Math.max(0, newBlackTime),
+        isGameOver: state.isGameOver || isTimeout,
+      };
+    }
     default:
       return state;
   }
@@ -80,6 +105,19 @@ function gameReducer(state: GameState, action: Action): GameState {
 
 export function useChessGame() {
   const [state, dispatch] = useReducer(gameReducer, createInitialState());
+
+  useEffect(() => {
+    if (state.isGameOver || state.moveHistoryIndex < state.history.length) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      dispatch({ type: 'TICK' });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [state.isGameOver, state.moveHistoryIndex, state.history.length, state.fen]);
+
 
   const makeMove = useCallback((move: string | { from: Square; to: Square; promotion?: string }) => {
     dispatch({ type: 'MOVE', move });
@@ -93,8 +131,13 @@ export function useChessGame() {
     dispatch({ type: 'SET_HISTORY_INDEX', index });
   }, []);
   
-  // Create a temporary game instance from the current FEN to derive board state.
   const game = useMemo(() => new Chess(state.fen), [state.fen]);
+
+  const status = useMemo(() => {
+    if (state.whiteTime <= 0) return 'Black wins on time';
+    if (state.blackTime <= 0) return 'White wins on time';
+    return getStatus(game);
+  }, [state.whiteTime, state.blackTime, game]);
 
   const lastMove = useMemo(() => {
     if (state.moveHistoryIndex > 0) {
@@ -107,13 +150,14 @@ export function useChessGame() {
     fen: state.fen,
     board: game.board(),
     turn: game.turn(),
-    status: getStatus(game),
-    // isGameOver should reflect the end of the main game line, not the viewed history state.
+    status,
     isGameOver: state.isGameOver,
     history: state.history,
     moveHistoryIndex: state.moveHistoryIndex,
     isViewingHistory: state.moveHistoryIndex < state.history.length,
     lastMove,
+    whiteTime: state.whiteTime,
+    blackTime: state.blackTime,
     makeMove,
     resetGame,
     setMoveHistoryIndex,

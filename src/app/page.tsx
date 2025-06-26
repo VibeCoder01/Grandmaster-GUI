@@ -18,6 +18,8 @@ export default function GrandmasterGuiPage() {
     history,
     status,
     moveHistoryIndex,
+    whiteTime,
+    blackTime,
     makeMove,
     resetGame,
     setMoveHistoryIndex,
@@ -50,7 +52,6 @@ export default function GrandmasterGuiPage() {
         if (!request) return;
 
         if (type === 'progress') {
-            // Progress is only for the current thinking search, as pondering progress is calculated locally.
             if (!request.options.isPonder && id === currentSearchId.current) {
                 setProgress(progress!);
             }
@@ -60,49 +61,42 @@ export default function GrandmasterGuiPage() {
         const { isPonder } = request.options;
 
         const handleVariation = (variationData: string[], isBest: boolean) => {
-             if (variationData && variationData.length > 0) {
-                const searchFen = searchFenMapRef.current.get(id);
-                if (!searchFen) return;
+             const searchFen = searchFenMapRef.current.get(id);
+             if (!searchFen || (isBest && isPonder)) return;
 
-                const tempGame = new Chess(searchFen);
-                const moveObjects: Move[] = [];
-                let validVariation = true;
-                for (const moveStr of variationData) {
-                    try {
-                        const moveObj = tempGame.move(moveStr, { sloppy: true });
-                        if (moveObj) {
-                            moveObjects.push(moveObj);
-                        } else {
-                            validVariation = false;
-                            break;
-                        }
-                    } catch (err) {
-                        validVariation = false;
-                        break;
-                    }
-                }
+             const tempGame = new Chess(searchFen);
+             const moveObjects: Move[] = [];
+             let validVariation = true;
+             for (const moveStr of variationData) {
+                 try {
+                     const moveObj = tempGame.move(moveStr, { sloppy: true });
+                     if (moveObj) {
+                         moveObjects.push(moveObj);
+                     } else {
+                         validVariation = false;
+                         break;
+                     }
+                 } catch (err) {
+                     validVariation = false;
+                     break;
+                 }
+             }
 
-                if (validVariation) {
-                    if (isBest) {
-                      setBestVariation(moveObjects);
-                    } else {
-                      setExploredVariation(moveObjects);
-                    }
-                }
-            }
+             if (validVariation) {
+                 if (isBest) {
+                   setBestVariation(moveObjects);
+                 } else {
+                   if (isPonderingAnimationEnabled && (isPonder || id === currentSearchId.current)) {
+                     setExploredVariation(moveObjects);
+                   }
+                 }
+             }
         }
 
-        // Update UI for thinking and pondering animations
         if (type === 'exploring') {
-            // Animate for both pondering and the current thinking search
-            if (isPonderingAnimationEnabled && (isPonder || id === currentSearchId.current)) {
-                handleVariation(variation!, false);
-            }
+            handleVariation(variation!, false);
         } else if (type === 'interim') {
-            // Update best move text only for the current thinking search
-            if (!isPonder && id === currentSearchId.current) {
-                handleVariation(variation!, true);
-            }
+            handleVariation(variation!, true);
         }
 
         if (type === 'final') {
@@ -139,14 +133,13 @@ export default function GrandmasterGuiPage() {
     const id = nextRequestId.current++;
     searchFenMapRef.current.set(id, fen);
 
-    // If it's a "thinking" request, set it as the current one and cancel any previous "thinking" request
     if (!options.isPonder) {
       setBestVariation(null);
       setExploredVariation(null);
       
       if (currentSearchId.current !== null && pendingRequests.current.has(currentSearchId.current)) {
           const oldRequest = pendingRequests.current.get(currentSearchId.current)!;
-          oldRequest.resolve(null); // Resolve promise of old request to unblock it
+          oldRequest.resolve(null); 
           pendingRequests.current.delete(currentSearchId.current);
       }
       currentSearchId.current = id;
@@ -161,23 +154,19 @@ export default function GrandmasterGuiPage() {
     return promise;
   }, []);
 
-
-  // This useEffect handles the engine's move (`turn === 'b'`)
   useEffect(() => {
     if (turn === 'b' && !isGameOver && !isViewingHistory) {
-      const cachedMove = ponderCache.current.get(fen);
+      const fenAfterPlayerMove = new Chess(fen).fen();
+      const cachedMove = ponderCache.current.get(fenAfterPlayerMove);
       
       if (isPonderingEnabled && cachedMove) {
-          // Move instantly using the cached response
           makeMove(cachedMove);
       } else {
-        // Fallback to "thinking" if no cached move is available
-        setIsPondering(false); // Ensure pondering UI is off
+        setIsPondering(false);
         const makeEngineMove = async () => {
           setIsThinking(true);
           setProgress(0);
           const bestMove = await requestBestMove(fen, depth, { isPonder: false });
-          // Only make the move if the search wasn't cancelled in the meantime
           if (currentSearchId.current === null && bestMove) {
             makeMove(bestMove);
           }
@@ -191,17 +180,16 @@ export default function GrandmasterGuiPage() {
     }
   }, [turn, isGameOver, fen, makeMove, isViewingHistory, depth, requestBestMove, isPonderingEnabled]);
 
-  // This useEffect handles pondering on the user's turn (`turn === 'w'`)
   useEffect(() => {
     let isCancelled = false;
 
     if (isPonderingEnabled && turn === 'w' && !isGameOver && !isViewingHistory) {
       const ponder = async () => {
-        // A short delay so we don't fire on every minor state change
         await new Promise(resolve => setTimeout(resolve, 200));
         if (isCancelled || new Chess(fen).turn() !== 'w') return;
         
         setIsPondering(true);
+        setBestVariation(null);
         setProgress(0);
         ponderCache.current.clear();
 
@@ -293,6 +281,8 @@ export default function GrandmasterGuiPage() {
         isPonderingAnimationEnabled={isPonderingAnimationEnabled}
         onPonderingAnimationEnabledChange={setIsPonderingAnimationEnabled}
         progress={progress}
+        whiteTime={whiteTime}
+        blackTime={blackTime}
       />
     </main>
   );

@@ -46,6 +46,8 @@ interface SidePanelProps {
   isPonderingAnimationEnabled: boolean;
   onPonderingAnimationEnabledChange: (checked: boolean) => void;
   progress: number;
+  whiteTime: number;
+  blackTime: number;
 }
 
 export default function SidePanel({
@@ -68,7 +70,15 @@ export default function SidePanel({
   isPonderingAnimationEnabled,
   onPonderingAnimationEnabledChange,
   progress,
+  whiteTime,
+  blackTime
 }: SidePanelProps) {
+
+  const formatTime = (timeInSeconds: number) => {
+    const minutes = Math.floor(timeInSeconds / 60);
+    const seconds = timeInSeconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
 
   const TurnStatusDisplay = () => {
     if (isGameOver) {
@@ -120,7 +130,6 @@ export default function SidePanel({
         );
     }
     
-    // Default case: Show whose turn it is
     const turnText = turn === 'w' ? "White's Turn" : "Black's Turn";
     return <Badge variant="outline">{turnText}</Badge>;
   }
@@ -203,6 +212,14 @@ export default function SidePanel({
               </div>
             </DialogContent>
           </Dialog>
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-center text-xl font-mono font-semibold">
+          <div className={cn("p-2 rounded-lg bg-card text-card-foreground", turn === 'w' && "ring-2 ring-accent")}>
+            <span>{formatTime(whiteTime)}</span>
+          </div>
+          <div className={cn("p-2 rounded-lg bg-card text-card-foreground", turn === 'b' && "ring-2 ring-accent")}>
+            <span>{formatTime(blackTime)}</span>
+          </div>
         </div>
         <div className="flex justify-between items-start text-sm min-h-10">
           <Badge variant={isGameOver ? "destructive" : "secondary"} className="capitalize">{status}</Badge>
