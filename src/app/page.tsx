@@ -33,6 +33,7 @@ export default function GrandmasterGuiPage() {
   const workerRef = useRef<Worker | null>(null);
   const nextRequestId = useRef(0);
   const pendingRequests = useRef(new Map<number, (value: string | null) => void>());
+  const currentSearchId = useRef<number | null>(null);
 
   // Refs to hold the latest state for the worker's onmessage handler
   const fenRef = useRef(fen);
@@ -61,6 +62,12 @@ export default function GrandmasterGuiPage() {
 
     worker.onmessage = (e: MessageEvent<{id: number, move?: string | null, variation?: string[], type: 'interim' | 'final'}>) => {
         const { id, move, variation, type } = e.data;
+        
+        // Ignore messages from stale or superseded searches
+        if (id !== currentSearchId.current) {
+            return;
+        }
+
         if (type === 'interim') {
             if (variation && variation.length > 0) {
                 const tempGame = new Chess(fenRef.current);
@@ -93,12 +100,14 @@ export default function GrandmasterGuiPage() {
                 resolve(move ?? null);
                 pendingRequests.current.delete(id);
             }
-            // The component's useEffects now handle clearing visuals at the correct time.
+            // The search is now complete, so we can clear the active search ID.
+            currentSearchId.current = null;
         }
     };
     
     return () => {
         worker.terminate();
+        currentSearchId.current = null;
     }
   }, []); // Run only once on mount
 
@@ -109,10 +118,13 @@ export default function GrandmasterGuiPage() {
         return Promise.resolve(null);
     }
     
-    // Clear previous visuals at the start of any new search.
+    // Any new request immediately clears old visuals and pending promises.
     setVisualizedVariation(null);
+    pendingRequests.current.clear();
 
     const id = nextRequestId.current++;
+    currentSearchId.current = id; // Set this search as the currently active one
+
     const promise = new Promise<string | null>((resolve) => {
         pendingRequests.current.set(id, resolve);
     });
@@ -130,7 +142,8 @@ export default function GrandmasterGuiPage() {
       const makeEngineMove = async () => {
         setIsThinking(true);
         const bestMove = await requestBestMove(fen, depth);
-        if (bestMove) {
+        // By the time we get here, the search might have been superseded. Check the ID.
+        if (currentSearchId.current === null && bestMove) {
           makeMove(bestMove);
         }
         setIsThinking(false);
@@ -146,10 +159,10 @@ export default function GrandmasterGuiPage() {
     if (isPonderingEnabled && turn === 'w' && !isGameOver && !isViewingHistory) {
       let isCancelled = false;
       const ponderTimeout = setTimeout(() => {
+        // A previous search might still be going, but we start a new one anyway.
+        // requestBestMove will handle cancelling the old one's effects.
         if (workerRef.current && new Chess(fen).turn() === 'w' && !isCancelled) {
           setIsPondering(true);
-          // Start a search for the best move. When it completes, the engine
-          // is no longer pondering, but waiting for the user's move.
           requestBestMove(fen, depth).then(() => {
             if (!isCancelled) {
               setIsPondering(false);
