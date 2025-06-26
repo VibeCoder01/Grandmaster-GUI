@@ -97,10 +97,13 @@ export function useChessGame() {
   }, []);
   
   const { fen, board, turn, status } = useMemo(() => {
-    const tempGame = new Chess();
-    state.history.slice(0, state.moveHistoryIndex).forEach(move => {
-      tempGame.move({ from: move.from, to: move.to, promotion: move.promotion });
-    });
+    // Determine the FEN for the currently viewed move history index.
+    const fenToLoad = state.moveHistoryIndex > 0
+      ? state.history[state.moveHistoryIndex - 1].after
+      : new Chess().fen(); // Starting FEN for index 0
+
+    const tempGame = new Chess(fenToLoad);
+
     return {
       fen: tempGame.fen(),
       board: tempGame.board(),
