@@ -79,7 +79,7 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
               onDragOver={handleDragOver}
               className={cn(
                 'w-full h-full flex items-center justify-center relative transition-colors duration-200',
-                isLight ? 'bg-foreground/5' : 'bg-primary/20',
+                isLight ? 'bg-secondary' : 'bg-primary',
                 isLastMoveSquare && 'bg-accent/40',
                 draggedPiece && 'transition-none'
               )}
@@ -100,10 +100,10 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
                   />
                 </div>
               )}
-               <span className="absolute bottom-1 left-1 text-xs font-bold text-primary/50 select-none">
+               <span className="absolute bottom-1 left-1 text-xs font-bold text-primary-foreground/50 select-none">
                 {colIndex === 0 && rank}
               </span>
-              <span className="absolute top-1 right-1 text-xs font-bold text-primary/50 select-none">
+              <span className="absolute top-1 right-1 text-xs font-bold text-primary-foreground/50 select-none">
                 {rowIndex === 7 && file}
               </span>
             </div>
