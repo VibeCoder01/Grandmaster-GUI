@@ -51,6 +51,7 @@ Analyze the position and select the best move from the list of legal moves based
 7.  **Plan Based on the Position:** Formulate a plan based on the pawn structure and piece placement. A good move should fit into a coherent plan. Consider common plans like a kingside attack (especially if the center is closed), a minority attack (using fewer pawns to create weaknesses), or a central break to open the position for your pieces.
 8.  **Trade When Ahead, Avoid When Behind:** If you have a material advantage, seek to simplify the game by trading pieces (especially queens). This reduces your opponent's counter-attacking chances. If you are behind in material, avoid trades and seek to create complications.
 9.  **Endgame Principles:** When few pieces remain, prioritize king activity. The king becomes a powerful fighting piece and should be moved towards the center. Understand basic concepts like opposition, the Rule of the Square to catch passed pawns, and fundamental pawn endings.
+10. **Always Have a Reason:** Don't play "hope chess" by making moves hoping your opponent blunders. Every move should have a purpose. Constantly ask, "What is my opponent threatening? What is my plan? How does my opponent respond to my plan?" and choose the move that best addresses these questions.
 
 Based on a holistic evaluation of these principles, choose the single best move from the provided list of legal moves and return it.
 `,
