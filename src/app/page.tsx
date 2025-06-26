@@ -36,6 +36,7 @@ export default function GrandmasterGuiPage() {
   const pendingRequests = useRef(new Map<number, (value: string | null) => void>());
   const currentSearchId = useRef<number | null>(null);
   const dizzyIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const searchFenMapRef = useRef(new Map<number, string>());
 
   const fenRef = useRef(fen);
 
@@ -56,7 +57,10 @@ export default function GrandmasterGuiPage() {
 
         if (type === 'interim') {
             if (variation && variation.length > 0) {
-                const tempGame = new Chess(fenRef.current);
+                const searchFen = searchFenMapRef.current.get(id);
+                if (!searchFen) return;
+
+                const tempGame = new Chess(searchFen);
                 const moveObjects: Move[] = [];
                 let validVariation = true;
                 for (const moveStr of variation) {
@@ -84,6 +88,7 @@ export default function GrandmasterGuiPage() {
                 resolve(move ?? null);
                 pendingRequests.current.delete(id);
             }
+            searchFenMapRef.current.delete(id);
             currentSearchId.current = null;
         }
     };
@@ -105,6 +110,7 @@ export default function GrandmasterGuiPage() {
 
     const id = nextRequestId.current++;
     currentSearchId.current = id;
+    searchFenMapRef.current.set(id, fen);
 
     const promise = new Promise<string | null>((resolve) => {
         pendingRequests.current.set(id, resolve);
