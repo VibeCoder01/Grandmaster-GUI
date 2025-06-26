@@ -20,6 +20,7 @@ import {
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Input } from './ui/input';
+import { Slider } from './ui/slider';
 
 interface SidePanelProps {
   status: string;
@@ -31,6 +32,8 @@ interface SidePanelProps {
   moveHistoryIndex: number;
   resetGame: () => void;
   setMoveHistoryIndex: (index: number) => void;
+  depth: number;
+  onDepthChange: (depth: number) => void;
 }
 
 export default function SidePanel({
@@ -42,7 +45,9 @@ export default function SidePanel({
   isViewingHistory,
   moveHistoryIndex,
   resetGame,
-  setMoveHistoryIndex
+  setMoveHistoryIndex,
+  depth,
+  onDepthChange
 }: SidePanelProps) {
   const turnText = turn === 'w' ? "White's Turn" : "Black's Turn";
 
@@ -58,7 +63,7 @@ export default function SidePanel({
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Engine Settings</DialogTitle>
-                <DialogDescription>Configure the chess engine. External engine support is planned for a future release.</DialogDescription>
+                <DialogDescription>Configure the chess engine.</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className='space-y-2'>
@@ -69,11 +74,26 @@ export default function SidePanel({
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="internal">Internal Engine</SelectItem>
-                            <SelectItem value="external">External UCI Engine</SelectItem>
+                            <SelectItem value="external" disabled>External UCI Engine (planned)</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
                 <div className='space-y-2'>
+                    <Label htmlFor="depth">Look-ahead Depth</Label>
+                    <div className="flex items-center gap-4 pt-2">
+                        <Slider
+                            id="depth"
+                            min={1}
+                            max={4}
+                            step={1}
+                            value={[depth]}
+                            onValueChange={(value) => onDepthChange(value[0])}
+                        />
+                        <span className="font-mono text-lg w-4 text-center">{depth}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">Higher values are stronger but slower. Max 4 recommended.</p>
+                </div>
+                <div className='space-y-2 opacity-50'>
                     <Label htmlFor="engine-url">UCI Engine URL</Label>
                     <Input id="engine-url" placeholder="ws://localhost:8080" disabled />
                 </div>

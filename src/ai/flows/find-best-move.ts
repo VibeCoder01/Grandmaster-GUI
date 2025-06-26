@@ -16,6 +16,7 @@ const FindBestMoveInputSchema = z.object({
     .string()
     .describe('The current state of the chess board in Forsyth–Edwards Notation (FEN).'),
   legalMoves: z.array(z.string()).describe('The list of legal moves in Standard Algebraic Notation (SAN).'),
+  depth: z.number().describe('The search depth in plies (half-moves). A higher number means a deeper, stronger search.'),
 });
 export type FindBestMoveInput = z.infer<typeof FindBestMoveInputSchema>;
 
@@ -34,13 +35,17 @@ const prompt = ai.definePrompt({
   name: 'findBestMovePrompt',
   input: {schema: FindBestMoveInputSchema},
   output: {schema: FindBestMoveOutputSchema},
-  prompt: `You are a chess grandmaster. Your task is to select the best move from a list of legal moves.
+  prompt: `You are a chess grandmaster engine. Your task is to select the best move from a list of legal moves by performing a lookahead search.
 The current state of the board is provided in FEN notation. The player to move is determined by the FEN string.
+
+Search Depth: {{{depth}}} plies.
 
 Board State (FEN): {{{boardStateFen}}}
 Legal Moves: {{#each legalMoves}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}
 
-Analyze the position and select the best move from the list of legal moves based on the following strategic principles, in order of importance:
+Perform a minimax-style search to the specified depth. For each legal move, consider the opponent's best responses, and then your best responses, and so on, up to the search depth. At the leaf nodes of your search, evaluate the position based on the strategic principles below. Choose the move that leads to the best outcome after this lookahead search.
+
+**Strategic Principles (in order of importance):**
 
 1.  **Tactics and Material:** This is the most important principle. Always look for tactical opportunities like checks, captures, threats, forks, pins, skewers, and discovered attacks. Prioritize moves that win material or create immediate threats to the opponent's pieces. After every move, ask: “What are all checks, captures, and threats available to both sides?”
 2.  **King Safety:** A safe king is the foundation of any good position. Castle early (usually kingside) to safeguard your king and connect your rooks. Avoid leaving the king in the center or exposing it with reckless pawn pushes.
@@ -73,7 +78,7 @@ Analyze the position and select the best move from the list of legal moves based
         - **iv. Rook and Pawn vs. Rook:** A highly technical but very common endgame. Knowledge of the Lucena Position (a winning method) and the Philidor Position (a drawing method) is essential.
 10. **Always Have a Reason:** Don't play "hope chess" by making moves hoping your opponent blunders. Every move should have a purpose. Constantly ask, "What is my opponent threatening? What is my plan? How does my opponent respond to my plan?" and choose the move that best addresses these questions.
 
-Based on a holistic evaluation of these principles, choose the single best move from the provided list of legal moves and return it.
+Based on your deep search and holistic evaluation of these principles, choose the single best move from the provided list of legal moves and return it.
 `,
 });
 

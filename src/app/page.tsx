@@ -4,7 +4,7 @@ import Chessboard from "@/components/Chessboard";
 import SidePanel from "@/components/SidePanel";
 import { useChessGame } from "@/hooks/useChessGame";
 import { getBestMove } from "@/lib/engine";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function GrandmasterGuiPage() {
@@ -22,20 +22,21 @@ export default function GrandmasterGuiPage() {
     setMoveHistoryIndex,
   } = useChessGame();
   const { toast } = useToast();
+  const [depth, setDepth] = useState(2);
 
   const lastMove = moveHistoryIndex > 0 && history.length >= moveHistoryIndex ? history[moveHistoryIndex - 1] : undefined;
 
   useEffect(() => {
     if (turn === 'b' && !isGameOver && !isViewingHistory) {
       const makeEngineMove = async () => {
-        const bestMove = await getBestMove(fen);
+        const bestMove = await getBestMove(fen, depth);
         if (bestMove) {
           makeMove(bestMove);
         }
       };
       makeEngineMove();
     }
-  }, [turn, isGameOver, fen, makeMove, isViewingHistory]);
+  }, [turn, isGameOver, fen, makeMove, isViewingHistory, depth]);
 
   useEffect(() => {
     if(isGameOver) {
@@ -67,6 +68,8 @@ export default function GrandmasterGuiPage() {
         moveHistoryIndex={moveHistoryIndex}
         resetGame={resetGame}
         setMoveHistoryIndex={setMoveHistoryIndex}
+        depth={depth}
+        onDepthChange={setDepth}
       />
     </main>
   );
