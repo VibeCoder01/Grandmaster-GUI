@@ -99,7 +99,7 @@ const evaluateBoard = (game: Chess) => {
     return totalEvaluation;
 };
 
-async function minimax(game: Chess, depth: number, alpha: number, beta: number, isMaximizingPlayer: boolean, id: number, isPonder: boolean, topLevelMove: Move | null): Promise<{ score: number, pv: string[] }> {
+async function minimax(game: Chess, depth: number, alpha: number, beta: number, isMaximizingPlayer: boolean): Promise<{ score: number, pv: string[] }> {
     if (depth === 0 || game.isGameOver()) {
         return { score: evaluateBoard(game), pv: [] };
     }
@@ -112,7 +112,7 @@ async function minimax(game: Chess, depth: number, alpha: number, beta: number, 
 
     for (const move of moves) {
         game.move(move.san);
-        const result = await minimax(game, depth - 1, alpha, beta, !isMaximizingPlayer, id, isPonder, null);
+        const result = await minimax(game, depth - 1, alpha, beta, !isMaximizingPlayer);
         game.undo();
 
         if (isMaximizingPlayer) {
@@ -156,23 +156,25 @@ const findBestMove = async (fen: string, depth: number, id: number, isPonder: bo
     let bestMove: string | null = null;
     const isMaximizingPlayer = game.turn() === 'w';
 
+    const totalMovesToConsider = moves.length * depth;
+    let movesAnalyzedOverall = 0;
+
     for (let currentDepth = 1; currentDepth <= depth; currentDepth++) {
         let bestValue = isMaximizingPlayer ? -Infinity : Infinity;
         let currentBestMoveForDepth: string | null = null;
         let bestVariationForDepth: string[] = [];
         
-        let movesAnalyzed = 0;
-
         for (const move of moves) {
-            
             if (!isPonder) {
                  await new Promise(resolve => setTimeout(resolve, 0));
+                 movesAnalyzedOverall++;
+                 const progress = Math.round((movesAnalyzedOverall / totalMovesToConsider) * 100);
+                 self.postMessage({ type: 'progress', id, progress });
             }
 
             game.move(move.san);
-            const result = await minimax(game, currentDepth - 1, -Infinity, Infinity, !isMaximizingPlayer, id, isPonder, move);
+            const result = await minimax(game, currentDepth - 1, -Infinity, Infinity, !isMaximizingPlayer);
             game.undo();
-            movesAnalyzed++;
             
             const exploredVariation = [move.san, ...result.pv];
             self.postMessage({ type: 'exploring', id, variation: exploredVariation });

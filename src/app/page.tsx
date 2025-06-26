@@ -46,12 +46,15 @@ export default function GrandmasterGuiPage() {
     workerRef.current = worker;
 
     worker.onmessage = (e: MessageEvent<{id: number, move?: string | null, variation?: string[], type: string, progress?: number}>) => {
-        const { id, move, variation, type, progress } = e.data;
+        const { id, move, variation, type, progress: newProgress } = e.data;
         
         const request = pendingRequests.current.get(id);
         if (!request) return;
 
         if (type === 'progress') {
+            if (id === currentSearchId.current) { // Only update progress for the "thinking" search
+                setProgress(newProgress!);
+            }
             return;
         }
 
@@ -99,6 +102,7 @@ export default function GrandmasterGuiPage() {
         if (type === 'final') {
             if (!isPonder && id === currentSearchId.current) {
                 setExploredVariation(null);
+                setProgress(0);
             }
             
             const { resolve } = request;
@@ -161,11 +165,13 @@ export default function GrandmasterGuiPage() {
         setIsPondering(false);
         const makeEngineMove = async () => {
           setIsThinking(true);
+          setProgress(0);
           const bestMove = await requestBestMove(fen, depth, { isPonder: false });
           if (currentSearchId.current === null && bestMove) {
             makeMove(bestMove);
           }
           setIsThinking(false);
+          setProgress(0);
         };
         makeEngineMove();
       }
