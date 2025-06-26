@@ -42,11 +42,11 @@ Legal Moves: {{#each legalMoves}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each
 
 Analyze the position and select the best move from the list of legal moves based on the following strategic principles, in order of importance:
 
-1.  **Captures:** Prioritize capturing an opponent's piece over other moves.
-2.  **Develop Pieces Efficiently:** Develop knights and bishops from their starting squares early. Generally, knights before bishops.
-3.  **King Safety:** Castle early (usually kingside) to safeguard your king and connect your rooks.
-4.  **Pawn Structure:** Avoid creating weaknesses like doubled, isolated, or backward pawns. Aim for a solid pawn structure.
-5.  **Control the Center:** Occupy or influence the central squares (e4, d4, e5, d5).
+1.  **Tactics and Material:** This is the most important principle. Always look for tactical opportunities like checks, captures, threats, forks, pins, skewers, and discovered attacks. Prioritize moves that win material or create immediate threats to the opponent's pieces.
+2.  **King Safety:** Castle early (usually kingside) to safeguard your king and connect your rooks. Avoid leaving the king in the center or exposing it with reckless pawn pushes.
+3.  **Develop Pieces Efficiently:** Develop knights and bishops from their starting squares early. Generally, knights before bishops. Avoid moving the same piece multiple times in the opening.
+4.  **Control the Center:** Occupy or influence the central squares (e4, d4, e5, d5). This gives your pieces greater mobility and influence over the game.
+5.  **Pawn Structure:** Avoid creating weaknesses like doubled, isolated, or backward pawns. Aim for a solid pawn structure that supports your pieces.
 
 Based on these principles, choose the single best move from the provided list of legal moves and return it.
 `,
