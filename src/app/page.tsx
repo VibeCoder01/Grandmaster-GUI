@@ -149,7 +149,7 @@ export default function GrandmasterGuiPage() {
         pendingRequests.current.set(id, { resolve, options });
     });
 
-    worker.postMessage({ id, fen, depth });
+    worker.postMessage({ id, fen, depth, isPonder: options.isPonder });
 
     return promise;
   }, []);
