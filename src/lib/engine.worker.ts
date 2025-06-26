@@ -135,7 +135,6 @@ const minimax = (game: Chess, depth: number, alpha: number, beta: number, isMaxi
     return { score: bestScore, pv: bestPV };
 };
 
-
 const findBestMove = (fen: string, depth: number, id: number) => {
     const game = new Chess(fen);
     if (game.isGameOver()) {
@@ -149,37 +148,47 @@ const findBestMove = (fen: string, depth: number, id: number) => {
         return;
     }
     if (moves.length === 1) {
+        self.postMessage({ type: 'interim', id, variation: [moves[0]] });
         self.postMessage({ type: 'final', id, move: moves[0] });
         return;
     }
 
     let bestMove: string | null = null;
     const isMaximizingPlayer = game.turn() === 'w';
-    let bestValue = isMaximizingPlayer ? -Infinity : Infinity;
-    
-    moves.sort((a, b) => (game.get(b.slice(2,4) as any) ? 1 : 0) - (game.get(a.slice(2,4) as any) ? 1 : 0));
 
-    for (const move of moves) {
-        game.move(move);
-        const result = minimax(game, depth - 1, -Infinity, Infinity, !isMaximizingPlayer);
-        game.undo();
-
-        const boardValue = result.score;
+    // Iterative deepening loop
+    for (let currentDepth = 1; currentDepth <= depth; currentDepth++) {
+        let bestValue = isMaximizingPlayer ? -Infinity : Infinity;
+        let currentBestMoveForDepth: string | null = null;
+        let bestVariationForDepth: string[] = [];
         
-        if (isMaximizingPlayer) {
-            if (boardValue > bestValue) {
-                bestValue = boardValue;
-                bestMove = move;
-                const variation = [move, ...result.pv];
-                self.postMessage({ type: 'interim', id, variation });
+        for (const move of moves) {
+            game.move(move);
+            // We call minimax with `currentDepth - 1` because the first move is already made.
+            const result = minimax(game, currentDepth - 1, -Infinity, Infinity, !isMaximizingPlayer);
+            game.undo();
+
+            const boardValue = result.score;
+            
+            if (isMaximizingPlayer) {
+                if (boardValue > bestValue) {
+                    bestValue = boardValue;
+                    currentBestMoveForDepth = move;
+                    bestVariationForDepth = [move, ...result.pv];
+                }
+            } else {
+                if (boardValue < bestValue) {
+                    bestValue = boardValue;
+                    currentBestMoveForDepth = move;
+                    bestVariationForDepth = [move, ...result.pv];
+                }
             }
-        } else {
-            if (boardValue < bestValue) {
-                bestValue = boardValue;
-                bestMove = move;
-                const variation = [move, ...result.pv];
-                self.postMessage({ type: 'interim', id, variation });
-            }
+        }
+        
+        // After searching all moves at the current depth, update the overall best move and post the best variation found so far.
+        if (currentBestMoveForDepth) {
+            bestMove = currentBestMoveForDepth;
+            self.postMessage({ type: 'interim', id, variation: bestVariationForDepth });
         }
     }
     
