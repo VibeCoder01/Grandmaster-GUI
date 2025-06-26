@@ -33,6 +33,18 @@ export default function GrandmasterGuiPage() {
   const nextRequestId = useRef(0);
   const pendingRequests = useRef(new Map<number, (value: string | null) => void>());
 
+  // Refs to hold the latest state for the worker's onmessage handler
+  const fenRef = useRef(fen);
+  const isPonderingRef = useRef(isPondering);
+
+  useEffect(() => {
+    fenRef.current = fen;
+  }, [fen]);
+
+  useEffect(() => {
+    isPonderingRef.current = isPondering;
+  }, [isPondering]);
+
   const lastMove = moveHistoryIndex > 0 && history.length >= moveHistoryIndex ? history[moveHistoryIndex - 1] : undefined;
 
   useEffect(() => {
@@ -43,7 +55,7 @@ export default function GrandmasterGuiPage() {
         const { id, move, variation, type } = e.data;
         if (type === 'interim') {
             if (variation && variation.length > 0) {
-                const tempGame = new Chess(fen);
+                const tempGame = new Chess(fenRef.current);
                 const moveObjects: Move[] = [];
                 let validVariation = true;
                 for (const moveStr of variation) {
@@ -72,15 +84,19 @@ export default function GrandmasterGuiPage() {
                 resolve(move ?? null);
                 pendingRequests.current.delete(id);
             }
-            setConsideredMove(null);
-            setVisualizedVariation(null);
+            // Only clear visuals if the engine was NOT pondering.
+            // When pondering, we want the last considered line to stay on the board until the user moves.
+            if (!isPonderingRef.current) {
+                setConsideredMove(null);
+                setVisualizedVariation(null);
+            }
         }
     };
     
     return () => {
         worker.terminate();
     }
-  }, [fen]); // fen is a dependency now
+  }, []); // Run only once on mount
 
   const requestBestMove = useCallback((fen: string, depth: number): Promise<string | null> => {
     const worker = workerRef.current;

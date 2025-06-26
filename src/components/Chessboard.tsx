@@ -222,7 +222,7 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
                           <div
                               key={`ghost-${index}`}
                               className="absolute inset-0 z-20 pointer-events-none"
-                              style={{ opacity: 0.4 - index * 0.1, transition: 'opacity 0.2s' }}
+                              style={{ opacity: 0.4 - index * 0.08, transition: 'opacity 0.2s' }}
                           >
                               <PieceComponent
                                   piece={ghostPiece}
