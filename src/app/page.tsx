@@ -52,9 +52,6 @@ export default function GrandmasterGuiPage() {
         if (!request) return;
 
         if (type === 'progress') {
-            if (!request.options.isPonder && id === currentSearchId.current) {
-                setProgress(progress!);
-            }
             return;
         }
 
@@ -102,7 +99,6 @@ export default function GrandmasterGuiPage() {
         if (type === 'final') {
             if (!isPonder && id === currentSearchId.current) {
                 setExploredVariation(null);
-                setProgress(100);
             }
             
             const { resolve } = request;
@@ -165,13 +161,11 @@ export default function GrandmasterGuiPage() {
         setIsPondering(false);
         const makeEngineMove = async () => {
           setIsThinking(true);
-          setProgress(0);
           const bestMove = await requestBestMove(fen, depth, { isPonder: false });
           if (currentSearchId.current === null && bestMove) {
             makeMove(bestMove);
           }
           setIsThinking(false);
-          setProgress(0);
         };
         makeEngineMove();
       }

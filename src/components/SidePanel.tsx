@@ -94,7 +94,6 @@ export default function SidePanel({
             <Loader2 className="h-3 w-3 animate-spin" />
             <span className="font-medium">Thinking...</span>
           </div>
-          <Progress value={progress} className="h-1 w-full" />
           {variationString && (
             <p className="font-mono ml-[1.125rem] break-all leading-tight">
               {variationString}

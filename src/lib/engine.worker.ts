@@ -1,5 +1,5 @@
 
-import { Chess } from 'chess.js';
+import { Chess, type Move } from 'chess.js';
 
 // --- Engine Logic (moved from engine.ts) ---
 
@@ -99,7 +99,7 @@ const evaluateBoard = (game: Chess) => {
     return totalEvaluation;
 };
 
-function minimax(game: Chess, depth: number, alpha: number, beta: number, isMaximizingPlayer: boolean): { score: number, pv: string[] } {
+async function minimax(game: Chess, depth: number, alpha: number, beta: number, isMaximizingPlayer: boolean, id: number, isPonder: boolean, topLevelMove: Move | null): Promise<{ score: number, pv: string[] }> {
     if (depth === 0 || game.isGameOver()) {
         return { score: evaluateBoard(game), pv: [] };
     }
@@ -112,7 +112,7 @@ function minimax(game: Chess, depth: number, alpha: number, beta: number, isMaxi
 
     for (const move of moves) {
         game.move(move.san);
-        const result = minimax(game, depth - 1, alpha, beta, !isMaximizingPlayer);
+        const result = await minimax(game, depth - 1, alpha, beta, !isMaximizingPlayer, id, isPonder, null);
         game.undo();
 
         if (isMaximizingPlayer) {
@@ -142,17 +142,14 @@ const findBestMove = async (fen: string, depth: number, id: number, isPonder: bo
         return;
     }
 
-    const moves = game.moves();
+    const moves = game.moves({ verbose: true });
     if (moves.length === 0) {
         self.postMessage({ type: 'final', id, move: null });
         return;
     }
     if (moves.length === 1) {
-        if (!isPonder) {
-            self.postMessage({ type: 'progress', id, progress: 100 });
-        }
-        self.postMessage({ type: 'interim', id, variation: [moves[0]] });
-        self.postMessage({ type: 'final', id, move: moves[0] });
+        self.postMessage({ type: 'interim', id, variation: [moves[0].san] });
+        self.postMessage({ type: 'final', id, move: moves[0].san });
         return;
     }
 
@@ -164,39 +161,35 @@ const findBestMove = async (fen: string, depth: number, id: number, isPonder: bo
         let currentBestMoveForDepth: string | null = null;
         let bestVariationForDepth: string[] = [];
         
-        const moveCount = moves.length;
         let movesAnalyzed = 0;
 
         for (const move of moves) {
-            game.move(move);
-            const result = minimax(game, currentDepth - 1, -Infinity, Infinity, !isMaximizingPlayer);
+            
+            if (!isPonder) {
+                 await new Promise(resolve => setTimeout(resolve, 0));
+            }
+
+            game.move(move.san);
+            const result = await minimax(game, currentDepth - 1, -Infinity, Infinity, !isMaximizingPlayer, id, isPonder, move);
             game.undo();
             movesAnalyzed++;
             
-            const exploredVariation = [move, ...result.pv];
+            const exploredVariation = [move.san, ...result.pv];
             self.postMessage({ type: 'exploring', id, variation: exploredVariation });
-
-            if (!isPonder) {
-                const overallProgress = Math.round((((currentDepth - 1) / depth) + (movesAnalyzed / moveCount / depth)) * 100);
-                self.postMessage({ type: 'progress', id, progress: overallProgress });
-                 // Yield control after analyzing each top-level move when thinking.
-                 // This allows progress messages to be processed by the main thread.
-                await new Promise(resolve => setTimeout(resolve, 0));
-            }
 
             const boardValue = result.score;
             
             if (isMaximizingPlayer) {
                 if (boardValue > bestValue) {
                     bestValue = boardValue;
-                    currentBestMoveForDepth = move;
-                    bestVariationForDepth = [move, ...result.pv];
+                    currentBestMoveForDepth = move.san;
+                    bestVariationForDepth = [move.san, ...result.pv];
                 }
             } else {
                 if (boardValue < bestValue) {
                     bestValue = boardValue;
-                    currentBestMoveForDepth = move;
-                    bestVariationForDepth = [move, ...result.pv];
+                    currentBestMoveForDepth = move.san;
+                    bestVariationForDepth = [move.san, ...result.pv];
                 }
             }
         }
@@ -207,7 +200,7 @@ const findBestMove = async (fen: string, depth: number, id: number, isPonder: bo
         }
     }
     
-    const finalMove = bestMove || moves[Math.floor(Math.random() * moves.length)];
+    const finalMove = bestMove || moves[Math.floor(Math.random() * moves.length)].san;
     self.postMessage({ type: 'final', id, move: finalMove });
 };
 
