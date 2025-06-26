@@ -39,8 +39,7 @@ interface SidePanelProps {
   onDepthChange: (depth: number) => void;
   isThinking: boolean;
   isPondering: boolean;
-  visualizedVariation: Move[] | null;
-  requestBestMove: (fen: string, depth: number) => Promise<string | null>;
+  bestVariation: Move[] | null;
   isPonderingEnabled: boolean;
   onPonderingEnabledChange: (checked: boolean) => void;
   isPonderingAnimationEnabled: boolean;
@@ -61,8 +60,7 @@ export default function SidePanel({
   onDepthChange,
   isThinking,
   isPondering,
-  visualizedVariation,
-  requestBestMove,
+  bestVariation,
   isPonderingEnabled,
   onPonderingEnabledChange,
   isPonderingAnimationEnabled,
@@ -74,7 +72,7 @@ export default function SidePanel({
       return null;
     }
     
-    const variationString = visualizedVariation?.map(m => m.san).join(' ');
+    const variationString = bestVariation?.map(m => m.san).join(' ');
 
     if (isThinking) {
       return (

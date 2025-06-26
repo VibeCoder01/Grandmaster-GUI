@@ -26,7 +26,8 @@ export default function GrandmasterGuiPage() {
   const [depth, setDepth] = useState(2);
   const [isThinking, setIsThinking] = useState(false);
   const [isPondering, setIsPondering] = useState(false);
-  const [visualizedVariation, setVisualizedVariation] = useState<Move[] | null>(null);
+  const [bestVariation, setBestVariation] = useState<Move[] | null>(null);
+  const [dizzyVariation, setDizzyVariation] = useState<Move[] | null>(null);
   const [isPonderingEnabled, setIsPonderingEnabled] = useState(true);
   const [isPonderingAnimationEnabled, setIsPonderingAnimationEnabled] = useState(true);
 
@@ -34,27 +35,13 @@ export default function GrandmasterGuiPage() {
   const nextRequestId = useRef(0);
   const pendingRequests = useRef(new Map<number, (value: string | null) => void>());
   const currentSearchId = useRef<number | null>(null);
+  const dizzyIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Refs to hold the latest state for the worker's onmessage handler
   const fenRef = useRef(fen);
-  const isPonderingAnimationEnabledRef = useRef(isPonderingAnimationEnabled);
 
   useEffect(() => {
     fenRef.current = fen;
   }, [fen]);
-
-  useEffect(() => {
-    isPonderingAnimationEnabledRef.current = isPonderingAnimationEnabled;
-  }, [isPonderingAnimationEnabled]);
-
-  useEffect(() => {
-    if (!isPonderingAnimationEnabled) {
-      setVisualizedVariation(null);
-    }
-  }, [isPonderingAnimationEnabled]);
-
-
-  const lastMove = moveHistoryIndex > 0 && history.length >= moveHistoryIndex ? history[moveHistoryIndex - 1] : undefined;
 
   useEffect(() => {
     const worker = new Worker(new URL('../lib/engine.worker.ts', import.meta.url));
@@ -63,7 +50,6 @@ export default function GrandmasterGuiPage() {
     worker.onmessage = (e: MessageEvent<{id: number, move?: string | null, variation?: string[], type: 'interim' | 'final'}>) => {
         const { id, move, variation, type } = e.data;
         
-        // Ignore messages from stale or superseded searches
         if (id !== currentSearchId.current) {
             return;
         }
@@ -89,9 +75,7 @@ export default function GrandmasterGuiPage() {
                 }
 
                 if (validVariation) {
-                    if(isPonderingAnimationEnabledRef.current) {
-                      setVisualizedVariation(moveObjects);
-                    }
+                    setBestVariation(moveObjects);
                 }
             }
         } else if (type === 'final') {
@@ -100,7 +84,6 @@ export default function GrandmasterGuiPage() {
                 resolve(move ?? null);
                 pendingRequests.current.delete(id);
             }
-            // The search is now complete, so we can clear the active search ID.
             currentSearchId.current = null;
         }
     };
@@ -109,21 +92,19 @@ export default function GrandmasterGuiPage() {
         worker.terminate();
         currentSearchId.current = null;
     }
-  }, []); // Run only once on mount
+  }, []);
 
   const requestBestMove = useCallback((fen: string, depth: number): Promise<string | null> => {
     const worker = workerRef.current;
     if (!worker) {
-        console.error("Engine worker not available.");
         return Promise.resolve(null);
     }
     
-    // Any new request immediately clears old visuals and pending promises.
-    setVisualizedVariation(null);
+    setBestVariation(null);
     pendingRequests.current.clear();
 
     const id = nextRequestId.current++;
-    currentSearchId.current = id; // Set this search as the currently active one
+    currentSearchId.current = id;
 
     const promise = new Promise<string | null>((resolve) => {
         pendingRequests.current.set(id, resolve);
@@ -136,13 +117,57 @@ export default function GrandmasterGuiPage() {
 
 
   useEffect(() => {
-    // Effect to make the engine's move
+    const isAnimating = (isThinking || isPondering) && isPonderingAnimationEnabled;
+
+    if (isAnimating) {
+        if (dizzyIntervalRef.current) {
+            clearInterval(dizzyIntervalRef.current);
+        }
+        dizzyIntervalRef.current = setInterval(() => {
+            const tempGame = new Chess(fenRef.current);
+            const moves = tempGame.moves({ verbose: true });
+            if (moves.length === 0) {
+                setDizzyVariation(null);
+                return;
+            }
+            const randomMove = moves[Math.floor(Math.random() * moves.length)];
+            
+            try {
+                tempGame.move(randomMove.san);
+                const responses = tempGame.moves({ verbose: true });
+                if (responses.length > 0) {
+                    const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+                    setDizzyVariation([randomMove, randomResponse]);
+                } else {
+                    setDizzyVariation([randomMove]);
+                }
+            } catch (e) {
+                setDizzyVariation([randomMove]);
+            }
+        }, 300);
+
+    } else {
+        if (dizzyIntervalRef.current) {
+            clearInterval(dizzyIntervalRef.current);
+            dizzyIntervalRef.current = null;
+        }
+        setDizzyVariation(null);
+    }
+
+    return () => {
+        if (dizzyIntervalRef.current) {
+            clearInterval(dizzyIntervalRef.current);
+        }
+    }
+  }, [isThinking, isPondering, isPonderingAnimationEnabled]);
+
+
+  useEffect(() => {
     if (turn === 'b' && !isGameOver && !isViewingHistory) {
-      setIsPondering(false); // Stop pondering when it's our turn to think for real
+      setIsPondering(false);
       const makeEngineMove = async () => {
         setIsThinking(true);
         const bestMove = await requestBestMove(fen, depth);
-        // By the time we get here, the search might have been superseded. Check the ID.
         if (currentSearchId.current === null && bestMove) {
           makeMove(bestMove);
         }
@@ -154,36 +179,27 @@ export default function GrandmasterGuiPage() {
     }
   }, [turn, isGameOver, fen, makeMove, isViewingHistory, depth, requestBestMove]);
 
-  // Effect for pondering on the user's turn
   useEffect(() => {
     if (isPonderingEnabled && turn === 'w' && !isGameOver && !isViewingHistory) {
       let isCancelled = false;
       const ponderTimeout = setTimeout(() => {
-        // A previous search might still be going, but we start a new one anyway.
-        // requestBestMove will handle cancelling the old one's effects.
         if (workerRef.current && new Chess(fen).turn() === 'w' && !isCancelled) {
           setIsPondering(true);
           requestBestMove(fen, depth).then(() => {
             if (!isCancelled) {
               setIsPondering(false);
-              // Clear visuals when pondering is complete and we are now waiting.
-              setVisualizedVariation(null);
             }
           });
         }
-      }, 500); // 500ms delay before pondering starts
+      }, 500);
 
       return () => {
         isCancelled = true;
         clearTimeout(ponderTimeout);
         setIsPondering(false);
-        // Also clear visuals when pondering is cancelled (e.g., user makes a move or settings change)
-        setVisualizedVariation(null);
       };
     } else {
       setIsPondering(false);
-      // Clear any leftover visuals if pondering is disabled or game state changes
-      setVisualizedVariation(null);
     }
   }, [turn, fen, isGameOver, isViewingHistory, depth, requestBestMove, isPonderingEnabled]);
 
@@ -197,6 +213,8 @@ export default function GrandmasterGuiPage() {
     }
   }, [isGameOver, status, toast]);
 
+  const lastMove = moveHistoryIndex > 0 && history.length >= moveHistoryIndex ? history[moveHistoryIndex - 1] : undefined;
+
   return (
     <main className="flex min-h-screen items-center justify-center p-4 lg:p-8 bg-background gap-8 flex-col lg:flex-row">
       <Chessboard
@@ -207,7 +225,7 @@ export default function GrandmasterGuiPage() {
         isViewingHistory={isViewingHistory}
         lastMove={lastMove}
         fen={fen}
-        visualizedVariation={visualizedVariation}
+        visualizedVariation={dizzyVariation}
         isThinking={isThinking}
         isPondering={isPondering}
       />
@@ -225,8 +243,7 @@ export default function GrandmasterGuiPage() {
         onDepthChange={setDepth}
         isThinking={isThinking}
         isPondering={isPondering}
-        visualizedVariation={visualizedVariation}
-        requestBestMove={requestBestMove}
+        bestVariation={bestVariation}
         isPonderingEnabled={isPonderingEnabled}
         onPonderingEnabledChange={setIsPonderingEnabled}
         isPonderingAnimationEnabled={isPonderingAnimationEnabled}
