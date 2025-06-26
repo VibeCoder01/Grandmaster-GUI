@@ -1,11 +1,13 @@
+
 "use client";
 
 import Chessboard from "@/components/Chessboard";
 import SidePanel from "@/components/SidePanel";
 import { useChessGame } from "@/hooks/useChessGame";
 import { getBestMove } from "@/lib/engine";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { Chess } from "chess.js";
 
 export default function GrandmasterGuiPage() {
   const {
@@ -23,12 +25,23 @@ export default function GrandmasterGuiPage() {
   } = useChessGame();
   const { toast } = useToast();
   const [depth, setDepth] = useState(2);
+  const ponderResult = useRef<{ fen: string, move: string } | null>(null);
 
   const lastMove = moveHistoryIndex > 0 && history.length >= moveHistoryIndex ? history[moveHistoryIndex - 1] : undefined;
 
   useEffect(() => {
+    // Effect to make the engine's move
     if (turn === 'b' && !isGameOver && !isViewingHistory) {
       const makeEngineMove = async () => {
+        // Check for a ponder hit
+        if (ponderResult.current && ponderResult.current.fen === fen) {
+          const move = ponderResult.current.move;
+          ponderResult.current = null; // Clear the ponder cache
+          makeMove(move);
+          return;
+        }
+        
+        // Ponder miss, calculate from scratch
         const bestMove = await getBestMove(fen, depth);
         if (bestMove) {
           makeMove(bestMove);
@@ -37,6 +50,42 @@ export default function GrandmasterGuiPage() {
       makeEngineMove();
     }
   }, [turn, isGameOver, fen, makeMove, isViewingHistory, depth]);
+
+  useEffect(() => {
+    // Effect to handle pondering on the user's turn
+    if (turn === 'w' && !isGameOver && !isViewingHistory) {
+      const ponder = async () => {
+        // 1. Predict human's best move with a shallow search
+        const predictedHumanMove = await getBestMove(fen, 1);
+        if (!predictedHumanMove) return;
+
+        // If the user has already moved while we were predicting, stop.
+        if (turn !== 'w') return;
+
+        // 2. Create the board state after that predicted move.
+        const game = new Chess(fen);
+        game.move(predictedHumanMove);
+        const futureFen = game.fen();
+
+        // 3. Pre-calculate the engine's response to that future state.
+        const engineResponse = await getBestMove(futureFen, depth);
+
+        // If the user has moved while we were calculating, the result is stale.
+        if (turn !== 'w') return;
+
+        if (engineResponse) {
+          // Cache the result
+          ponderResult.current = { fen: futureFen, move: engineResponse };
+        }
+      };
+      
+      // Start pondering in the background
+      ponder();
+    } else {
+        // Clear ponder result if it's not the user's turn
+        ponderResult.current = null;
+    }
+  }, [turn, fen, isGameOver, isViewingHistory, depth]);
 
   useEffect(() => {
     if(isGameOver) {
