@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Chess, type Square, type Piece as PieceInfo, type Move } from 'chess.js';
 import { cn } from '@/lib/utils';
 import PieceComponent from '@/components/Piece';
@@ -22,8 +22,15 @@ const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
 export default function Chessboard({ board, onMove, turn, isGameOver, isViewingHistory, lastMove, fen }: ChessboardProps) {
   const [draggedPiece, setDraggedPiece] = useState<Piece | null>(null);
   const [legalMoves, setLegalMoves] = useState<Square[]>([]);
+  const [isHighlighting, setIsHighlighting] = useState(false);
+  const highlightTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, piece: Piece) => {
+    if (highlightTimeoutRef.current) {
+      clearTimeout(highlightTimeoutRef.current);
+      highlightTimeoutRef.current = null;
+    }
+
     if (piece.color !== turn || isGameOver || isViewingHistory) {
       e.preventDefault();
       return;
@@ -36,11 +43,20 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
     const game = new Chess(fen);
     const moves = game.moves({ square: piece.square, verbose: true });
     setLegalMoves(moves.map(m => m.to));
+    setIsHighlighting(true);
   };
 
   const handleDragEnd = () => {
     setDraggedPiece(null);
-    setLegalMoves([]);
+    setIsHighlighting(false);
+
+    if (highlightTimeoutRef.current) {
+      clearTimeout(highlightTimeoutRef.current);
+    }
+    highlightTimeoutRef.current = setTimeout(() => {
+      setLegalMoves([]);
+      highlightTimeoutRef.current = null;
+    }, 1000);
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>, toSquare: Square) => {
@@ -112,7 +128,10 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
               )}
             >
               {isLegalMove && (
-                <div className="absolute w-full h-full flex items-center justify-center">
+                <div className={cn(
+                  "absolute w-full h-full flex items-center justify-center transition-opacity duration-1000",
+                  isHighlighting ? 'opacity-100' : 'opacity-0'
+                )}>
                   {!piece && <div className="w-1/3 h-1/3 bg-accent/50 rounded-full" />}
                   {piece && <div className="absolute inset-1 border-4 border-accent/50 rounded-full" />}
                 </div>
