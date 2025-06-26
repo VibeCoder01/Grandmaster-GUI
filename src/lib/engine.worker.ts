@@ -170,14 +170,14 @@ const findBestMove = (fen: string, depth: number, id: number) => {
             if (boardValue > bestValue) {
                 bestValue = boardValue;
                 bestMove = move;
-                const variation = [move, ...result.pv].slice(0, 3);
+                const variation = [move, ...result.pv];
                 self.postMessage({ type: 'interim', id, variation });
             }
         } else {
             if (boardValue < bestValue) {
                 bestValue = boardValue;
                 bestMove = move;
-                const variation = [move, ...result.pv].slice(0, 3);
+                const variation = [move, ...result.pv];
                 self.postMessage({ type: 'interim', id, variation });
             }
         }

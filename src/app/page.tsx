@@ -26,7 +26,6 @@ export default function GrandmasterGuiPage() {
   const [depth, setDepth] = useState(2);
   const [isThinking, setIsThinking] = useState(false);
   const [isPondering, setIsPondering] = useState(false);
-  const [consideredMove, setConsideredMove] = useState<string | null>(null);
   const [visualizedVariation, setVisualizedVariation] = useState<Move[] | null>(null);
   const [isPonderingEnabled, setIsPonderingEnabled] = useState(true);
   const [isPonderingAnimationEnabled, setIsPonderingAnimationEnabled] = useState(true);
@@ -86,7 +85,6 @@ export default function GrandmasterGuiPage() {
                     if(isPonderingAnimationEnabledRef.current) {
                       setVisualizedVariation(moveObjects);
                     }
-                    setConsideredMove(moveObjects[0]?.san || null);
                 }
             }
         } else if (type === 'final') {
@@ -112,7 +110,6 @@ export default function GrandmasterGuiPage() {
     }
     
     // Clear previous visuals at the start of any new search.
-    setConsideredMove(null); 
     setVisualizedVariation(null);
 
     const id = nextRequestId.current++;
@@ -158,7 +155,6 @@ export default function GrandmasterGuiPage() {
               setIsPondering(false);
               // Clear visuals when pondering is complete and we are now waiting.
               setVisualizedVariation(null);
-              setConsideredMove(null);
             }
           });
         }
@@ -170,13 +166,11 @@ export default function GrandmasterGuiPage() {
         setIsPondering(false);
         // Also clear visuals when pondering is cancelled (e.g., user makes a move or settings change)
         setVisualizedVariation(null);
-        setConsideredMove(null);
       };
     } else {
       setIsPondering(false);
       // Clear any leftover visuals if pondering is disabled or game state changes
       setVisualizedVariation(null);
-      setConsideredMove(null);
     }
   }, [turn, fen, isGameOver, isViewingHistory, depth, requestBestMove, isPonderingEnabled]);
 
@@ -218,7 +212,7 @@ export default function GrandmasterGuiPage() {
         onDepthChange={setDepth}
         isThinking={isThinking}
         isPondering={isPondering}
-        consideredMove={consideredMove}
+        visualizedVariation={visualizedVariation}
         requestBestMove={requestBestMove}
         isPonderingEnabled={isPonderingEnabled}
         onPonderingEnabledChange={setIsPonderingEnabled}

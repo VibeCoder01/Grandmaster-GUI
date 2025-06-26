@@ -39,7 +39,7 @@ interface SidePanelProps {
   onDepthChange: (depth: number) => void;
   isThinking: boolean;
   isPondering: boolean;
-  consideredMove: string | null;
+  visualizedVariation: Move[] | null;
   requestBestMove: (fen: string, depth: number) => Promise<string | null>;
   isPonderingEnabled: boolean;
   onPonderingEnabledChange: (checked: boolean) => void;
@@ -61,7 +61,7 @@ export default function SidePanel({
   onDepthChange,
   isThinking,
   isPondering,
-  consideredMove,
+  visualizedVariation,
   requestBestMove,
   isPonderingEnabled,
   onPonderingEnabledChange,
@@ -73,27 +73,37 @@ export default function SidePanel({
     if (isGameOver) {
       return null;
     }
+    
+    const variationString = visualizedVariation?.map(m => m.san).join(' ');
 
     if (isThinking) {
       return (
-        <div className={`flex items-center gap-1.5 text-muted-foreground`}>
+        <div className="flex flex-col items-start gap-1 text-muted-foreground text-xs">
+          <div className="flex items-center gap-1.5">
             <Loader2 className="h-3 w-3 animate-spin" />
-            <span className="text-xs font-medium">
-              Thinking...
-              {consideredMove && <span className="font-mono ml-1">{consideredMove}</span>}
-            </span>
+            <span className="font-medium">Thinking...</span>
+          </div>
+          {variationString && (
+            <p className="font-mono ml-[1.125rem] break-all leading-tight">
+              {variationString}
+            </p>
+          )}
         </div>
       );
     }
     
     if (isPondering) {
-      return (
-        <div className={`flex items-center gap-1.5 text-muted-foreground`}>
+       return (
+        <div className="flex flex-col items-start gap-1 text-muted-foreground text-xs">
+          <div className="flex items-center gap-1.5">
             <Loader2 className="h-3 w-3 animate-spin" />
-            <span className="text-xs font-medium">
-              Pondering...
-              {consideredMove && <span className="font-mono ml-1">{consideredMove}</span>}
-            </span>
+            <span className="font-medium">Pondering...</span>
+          </div>
+          {variationString && (
+            <p className="font-mono ml-[1.125rem] break-all leading-tight">
+              {variationString}
+            </p>
+          )}
         </div>
       );
     }
@@ -191,7 +201,7 @@ export default function SidePanel({
             </DialogContent>
           </Dialog>
         </div>
-        <div className="flex justify-between items-center text-sm h-5">
+        <div className="flex justify-between items-start text-sm min-h-5">
           <Badge variant={isGameOver ? "destructive" : "secondary"} className="capitalize">{status}</Badge>
           <div className="flex items-center gap-2">
             <TurnStatusDisplay />
