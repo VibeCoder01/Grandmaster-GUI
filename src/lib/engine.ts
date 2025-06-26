@@ -42,7 +42,19 @@ export async function getBestMove(fen: string): Promise<string | null> {
             return;
         }
         
-        // 4. Control the Center
+        // 4. Castle for King Safety (prioritizing kingside)
+        const kingsideCastle = moves.find(move => move.flags.includes('k'));
+        if (kingsideCastle) {
+            resolve(kingsideCastle.san);
+            return;
+        }
+        const queensideCastle = moves.find(move => move.flags.includes('q'));
+        if (queensideCastle) {
+            resolve(queensideCastle.san);
+            return;
+        }
+
+        // 5. Control the Center
         const centerSquares: Square[] = ['e4', 'd4', 'e5', 'd5'];
         const centerMoves = moves.filter(move => centerSquares.includes(move.to));
         if (centerMoves.length > 0) {
@@ -51,7 +63,7 @@ export async function getBestMove(fen: string): Promise<string | null> {
           return;
         }
 
-        // 5. Fallback to any random move
+        // 6. Fallback to any random move
         const bestMove = moves[Math.floor(Math.random() * moves.length)].san;
         resolve(bestMove);
       } catch (e) {
