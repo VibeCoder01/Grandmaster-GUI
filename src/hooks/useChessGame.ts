@@ -54,7 +54,8 @@ function gameReducer(state: GameState, action: Action): GameState {
         return state; // Invalid move
       }
       
-      const newHistory = gameCopy.history({ verbose: true });
+      // Append the new move to the existing history array.
+      const newHistory = [...state.history, result];
 
       return {
         ...state,
