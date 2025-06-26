@@ -7,20 +7,20 @@ import Image from 'next/image';
 
 const pieceImages: Record<PieceType['color'], Record<PieceSymbol, string>> = {
   w: {
-    p: 'https://upload.wikimedia.org/wikipedia/commons/4/45/Chess_plt45.svg',
-    n: 'https://upload.wikimedia.org/wikipedia/commons/7/70/Chess_nlt45.svg',
-    b: 'https://upload.wikimedia.org/wikipedia/commons/b/b1/Chess_blt45.svg',
-    r: 'https://upload.wikimedia.org/wikipedia/commons/f/ff/Chess_rlt45.svg',
-    q: 'https://upload.wikimedia.org/wikipedia/commons/1/15/Chess_qlt45.svg',
-    k: 'https://upload.wikimedia.org/wikipedia/commons/4/42/Chess_klt45.svg',
+    p: 'https://upload.wikimedia.org/wikipedia/commons/d/d0/White_pawn_condal.png',
+    n: 'https://upload.wikimedia.org/wikipedia/commons/5/57/White_knight_condal.png',
+    b: 'https://upload.wikimedia.org/wikipedia/commons/a/ad/White_bishop_condal.png',
+    r: 'https://upload.wikimedia.org/wikipedia/commons/5/58/White_rook_condal.png',
+    q: 'https://upload.wikimedia.org/wikipedia/commons/3/33/White_queen_condal.png',
+    k: 'https://upload.wikimedia.org/wikipedia/commons/f/fa/White_king_condal.png',
   },
   b: {
-    p: 'https://upload.wikimedia.org/wikipedia/commons/c/c7/Chess_pdt45.svg',
-    n: 'https://upload.wikimedia.org/wikipedia/commons/e/ef/Chess_ndt45.svg',
-    b: 'https://upload.wikimedia.org/wikipedia/commons/9/98/Chess_bdt45.svg',
-    r: 'https://upload.wikimedia.org/wikipedia/commons/a/af/Chess_rdt45.svg',
-    q: 'https://upload.wikimedia.org/wikipedia/commons/4/47/Chess_qdt45.svg',
-    k: 'https://upload.wikimedia.org/wikipedia/commons/f/f0/Chess_kdt45.svg',
+    p: 'https://upload.wikimedia.org/wikipedia/commons/f/fe/Black_pawn_condal.png',
+    n: 'https://upload.wikimedia.org/wikipedia/commons/3/36/Black_knight_condal.png',
+    b: 'https://upload.wikimedia.org/wikipedia/commons/b/b3/Black_bishop_condal.png',
+    r: 'https://upload.wikimedia.org/wikipedia/commons/f/f1/Black_rook_condal.png',
+    q: 'https://upload.wikimedia.org/wikipedia/commons/a/af/Black_queen_condal.png',
+    k: 'https://upload.wikimedia.org/wikipedia/commons/e/e3/Black_king_condal.png',
   },
 };
 
