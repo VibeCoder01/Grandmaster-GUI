@@ -163,7 +163,6 @@ const findBestMove = (fen: string, depth: number, id: number) => {
         let currentBestMoveForDepth: string | null = null;
         let bestVariationForDepth: string[] = [];
         
-        let movesProcessed = 0;
         for (const move of moves) {
             game.move(move);
             // We call minimax with `currentDepth - 1` because the first move is already made.
@@ -188,11 +187,6 @@ const findBestMove = (fen: string, depth: number, id: number) => {
                     bestVariationForDepth = [move, ...result.pv];
                 }
             }
-
-            movesProcessed++;
-            const depthProgress = movesProcessed / moves.length;
-            const overallProgress = (((currentDepth - 1) + depthProgress) / depth) * 100;
-            self.postMessage({ type: 'progress', id, progress: overallProgress });
         }
         
         // After searching all moves at the current depth, update the overall best move and post the best variation found so far.
@@ -200,6 +194,10 @@ const findBestMove = (fen: string, depth: number, id: number) => {
             bestMove = currentBestMoveForDepth;
             self.postMessage({ type: 'interim', id, variation: bestVariationForDepth });
         }
+
+        // Report progress after each full depth iteration is complete.
+        const overallProgress = (currentDepth / depth) * 100;
+        self.postMessage({ type: 'progress', id, progress: overallProgress });
     }
     
     const finalMove = bestMove || moves[Math.floor(Math.random() * moves.length)];
