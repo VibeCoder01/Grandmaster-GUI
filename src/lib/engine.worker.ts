@@ -162,6 +162,9 @@ const findBestMove = async (fen: string, depth: number, id: number) => {
         let currentBestMoveForDepth: string | null = null;
         let bestVariationForDepth: string[] = [];
         
+        const moveCount = moves.length;
+        let movesAnalyzed = 0;
+
         for (const move of moves) {
             game.move(move);
             const result = minimax(game, currentDepth - 1, -Infinity, Infinity, !isMaximizingPlayer);
@@ -185,17 +188,19 @@ const findBestMove = async (fen: string, depth: number, id: number) => {
                     bestVariationForDepth = [move, ...result.pv];
                 }
             }
+
+            movesAnalyzed++;
+            const overallProgress = (((currentDepth - 1) / depth) + (movesAnalyzed / moveCount / depth)) * 100;
+            self.postMessage({ type: 'progress', id, progress: overallProgress });
+
+            // Yield to the event loop to allow messages to be sent.
+            await new Promise(resolve => setTimeout(resolve, 0));
         }
         
         if (currentBestMoveForDepth) {
             bestMove = currentBestMoveForDepth;
             self.postMessage({ type: 'interim', id, variation: bestVariationForDepth });
         }
-
-        const overallProgress = (currentDepth / depth) * 100;
-        self.postMessage({ type: 'progress', id, progress: overallProgress });
-        
-        await new Promise(resolve => setTimeout(resolve, 0));
     }
     
     const finalMove = bestMove || moves[Math.floor(Math.random() * moves.length)];
