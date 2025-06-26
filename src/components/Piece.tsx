@@ -7,20 +7,20 @@ import Image from 'next/image';
 
 const pieceImages: Record<PieceType['color'], Record<PieceSymbol, string>> = {
   w: {
-    p: 'https://upload.wikimedia.org/wikipedia/commons/d/d0/White_pawn_condal.png',
-    n: 'https://upload.wikimedia.org/wikipedia/commons/5/57/White_knight_condal.png',
-    b: 'https://upload.wikimedia.org/wikipedia/commons/a/ad/White_bishop_condal.png',
-    r: 'https://upload.wikimedia.org/wikipedia/commons/5/58/White_rook_condal.png',
-    q: 'https://upload.wikimedia.org/wikipedia/commons/3/33/White_queen_condal.png',
-    k: 'https://upload.wikimedia.org/wikipedia/commons/f/fa/White_king_condal.png',
+    p: 'https://images.chesscomfiles.com/chess-themes/pieces/neo/150/wp.png',
+    n: 'https://images.chesscomfiles.com/chess-themes/pieces/neo/150/wn.png',
+    b: 'https://images.chesscomfiles.com/chess-themes/pieces/neo/150/wb.png',
+    r: 'https://images.chesscomfiles.com/chess-themes/pieces/neo/150/wr.png',
+    q: 'https://images.chesscomfiles.com/chess-themes/pieces/neo/150/wq.png',
+    k: 'https://images.chesscomfiles.com/chess-themes/pieces/neo/150/wk.png',
   },
   b: {
-    p: 'https://upload.wikimedia.org/wikipedia/commons/f/fe/Black_pawn_condal.png',
-    n: 'https://upload.wikimedia.org/wikipedia/commons/3/36/Black_knight_condal.png',
-    b: 'https://upload.wikimedia.org/wikipedia/commons/b/b3/Black_bishop_condal.png',
-    r: 'https://upload.wikimedia.org/wikipedia/commons/f/f1/Black_rook_condal.png',
-    q: 'https://upload.wikimedia.org/wikipedia/commons/a/af/Black_queen_condal.png',
-    k: 'https://upload.wikimedia.org/wikipedia/commons/e/e3/Black_king_condal.png',
+    p: 'https://images.chesscomfiles.com/chess-themes/pieces/neo/150/bp.png',
+    n: 'https://images.chesscomfiles.com/chess-themes/pieces/neo/150/bn.png',
+    b: 'https://images.chesscomfiles.com/chess-themes/pieces/neo/150/bb.png',
+    r: 'https://images.chesscomfiles.com/chess-themes/pieces/neo/150/br.png',
+    q: 'https://images.chesscomfiles.com/chess-themes/pieces/neo/150/bq.png',
+    k: 'https://images.chesscomfiles.com/chess-themes/pieces/neo/150/bk.png',
   },
 };
 
