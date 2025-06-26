@@ -8,7 +8,7 @@ import MoveHistory from './MoveHistory';
 import GameControls from './GameControls';
 import AiHint from './AiHint';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Settings } from 'lucide-react';
+import { Hourglass, Loader2, Settings } from 'lucide-react';
 import { Button } from './ui/button';
 import {
   Dialog,
@@ -36,6 +36,7 @@ interface SidePanelProps {
   depth: number;
   onDepthChange: (depth: number) => void;
   isPondering: boolean;
+  isThinking: boolean;
 }
 
 export default function SidePanel({
@@ -50,9 +51,47 @@ export default function SidePanel({
   setMoveHistoryIndex,
   depth,
   onDepthChange,
-  isPondering
+  isPondering,
+  isThinking,
 }: SidePanelProps) {
-  const turnText = turn === 'w' ? "White's Turn" : "Black's Turn";
+
+  const TurnStatusDisplay = () => {
+    const turnText = turn === 'w' ? "White's Turn" : "Black's Turn";
+
+    if (isGameOver) {
+      return null;
+    }
+
+    if (isThinking) {
+        return (
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span className="text-xs font-medium">Thinking...</span>
+            </div>
+        );
+    }
+
+    if (isPondering) {
+        return (
+            <div className="flex items-center gap-1.5 text-muted-foreground animate-pulse">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span className="text-xs font-medium">Pondering...</span>
+            </div>
+        );
+    }
+    
+    if (turn === 'w' && !isViewingHistory) {
+        return (
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+                <Hourglass className="h-3 w-3" />
+                <span className="text-xs font-medium">Waiting...</span>
+            </div>
+        );
+    }
+
+    // Default case: Show whose turn it is
+    return <Badge variant="outline">{turnText}</Badge>;
+  }
 
   return (
     <Card className="w-full max-w-md lg:max-w-sm flex-shrink-0 self-center lg:self-stretch">
@@ -104,16 +143,10 @@ export default function SidePanel({
             </DialogContent>
           </Dialog>
         </div>
-        <div className="flex justify-between items-center text-sm">
+        <div className="flex justify-between items-center text-sm h-5">
           <Badge variant={isGameOver ? "destructive" : "secondary"} className="capitalize">{status}</Badge>
           <div className="flex items-center gap-2">
-              {isPondering && (
-                  <div className="flex items-center gap-1.5 text-muted-foreground animate-pulse">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      <span className="text-xs font-medium">Pondering...</span>
-                  </div>
-              )}
-              <Badge variant="outline">{turnText}</Badge>
+            <TurnStatusDisplay />
           </div>
         </div>
         <Separator />

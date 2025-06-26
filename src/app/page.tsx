@@ -26,6 +26,7 @@ export default function GrandmasterGuiPage() {
   const { toast } = useToast();
   const [depth, setDepth] = useState(2);
   const [isPondering, setIsPondering] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
   const ponderResult = useRef<{ fen: string, move: string } | null>(null);
 
   const lastMove = moveHistoryIndex > 0 && history.length >= moveHistoryIndex ? history[moveHistoryIndex - 1] : undefined;
@@ -34,11 +35,13 @@ export default function GrandmasterGuiPage() {
     // Effect to make the engine's move
     if (turn === 'b' && !isGameOver && !isViewingHistory) {
       const makeEngineMove = async () => {
+        setIsThinking(true);
         // Check for a ponder hit
         if (ponderResult.current && ponderResult.current.fen === fen) {
           const move = ponderResult.current.move;
           ponderResult.current = null; // Clear the ponder cache
           makeMove(move);
+          setIsThinking(false);
           return;
         }
         
@@ -47,6 +50,7 @@ export default function GrandmasterGuiPage() {
         if (bestMove) {
           makeMove(bestMove);
         }
+        setIsThinking(false);
       };
       makeEngineMove();
     }
@@ -133,6 +137,7 @@ export default function GrandmasterGuiPage() {
         depth={depth}
         onDepthChange={setDepth}
         isPondering={isPondering}
+        isThinking={isThinking}
       />
     </main>
   );
