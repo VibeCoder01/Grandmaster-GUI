@@ -35,7 +35,6 @@ interface SidePanelProps {
   setMoveHistoryIndex: (index: number) => void;
   depth: number;
   onDepthChange: (depth: number) => void;
-  isPondering: boolean;
   isThinking: boolean;
   consideredMove: string | null;
   requestBestMove: (fen: string, depth: number) => Promise<string | null>;
@@ -53,7 +52,6 @@ export default function SidePanel({
   setMoveHistoryIndex,
   depth,
   onDepthChange,
-  isPondering,
   isThinking,
   consideredMove,
   requestBestMove,
@@ -64,14 +62,12 @@ export default function SidePanel({
       return null;
     }
 
-    const baseText = isThinking ? "Thinking..." : isPondering ? "Pondering..." : null;
-
-    if (isThinking || isPondering) {
+    if (isThinking) {
       return (
-        <div className={`flex items-center gap-1.5 text-muted-foreground ${isPondering ? 'animate-pulse' : ''}`}>
+        <div className={`flex items-center gap-1.5 text-muted-foreground`}>
             <Loader2 className="h-3 w-3 animate-spin" />
             <span className="text-xs font-medium">
-              {baseText}
+              Thinking...
               {consideredMove && <span className="font-mono ml-1">{consideredMove}</span>}
             </span>
         </div>
