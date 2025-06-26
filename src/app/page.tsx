@@ -6,6 +6,7 @@ import SidePanel from "@/components/SidePanel";
 import { useChessGame } from "@/hooks/useChessGame";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { Chess } from "chess.js";
 
 export default function GrandmasterGuiPage() {
   const {
@@ -24,6 +25,7 @@ export default function GrandmasterGuiPage() {
   const { toast } = useToast();
   const [depth, setDepth] = useState(2);
   const [isThinking, setIsThinking] = useState(false);
+  const [isPondering, setIsPondering] = useState(false);
   const [consideredMove, setConsideredMove] = useState<string | null>(null);
 
   const workerRef = useRef<Worker | null>(null);
@@ -78,6 +80,7 @@ export default function GrandmasterGuiPage() {
   useEffect(() => {
     // Effect to make the engine's move
     if (turn === 'b' && !isGameOver && !isViewingHistory) {
+      setIsPondering(false); // Stop pondering when it's our turn to think for real
       const makeEngineMove = async () => {
         setIsThinking(true);
         const bestMove = await requestBestMove(fen, depth);
@@ -87,11 +90,32 @@ export default function GrandmasterGuiPage() {
         setIsThinking(false);
       };
       makeEngineMove();
-    } else if (turn === 'w') {
-      setIsThinking(false);
-      setConsideredMove(null);
+    } else {
+        setIsThinking(false);
     }
   }, [turn, isGameOver, fen, makeMove, isViewingHistory, depth, requestBestMove]);
+
+  // Effect for pondering on the user's turn
+  useEffect(() => {
+    if (turn === 'w' && !isGameOver && !isViewingHistory) {
+      // Don't ponder immediately, give the UI a moment to settle
+      const ponderTimeout = setTimeout(() => {
+        if (workerRef.current && new Chess(fen).turn() === 'w') {
+            setIsPondering(true);
+            // Start a search for the best move. We don't care about the final
+            // result, only the 'interim' messages that update the 'consideredMove' state.
+            requestBestMove(fen, depth);
+        }
+      }, 500); // 500ms delay before pondering starts
+
+      return () => {
+        clearTimeout(ponderTimeout);
+        setIsPondering(false);
+      }
+    } else {
+      setIsPondering(false);
+    }
+  }, [turn, fen, isGameOver, isViewingHistory, depth, requestBestMove]);
 
 
   useEffect(() => {
@@ -127,6 +151,7 @@ export default function GrandmasterGuiPage() {
         depth={depth}
         onDepthChange={setDepth}
         isThinking={isThinking}
+        isPondering={isPondering}
         consideredMove={consideredMove}
         requestBestMove={requestBestMove}
       />

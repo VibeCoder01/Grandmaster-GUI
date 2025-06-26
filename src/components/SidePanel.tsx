@@ -36,6 +36,7 @@ interface SidePanelProps {
   depth: number;
   onDepthChange: (depth: number) => void;
   isThinking: boolean;
+  isPondering: boolean;
   consideredMove: string | null;
   requestBestMove: (fen: string, depth: number) => Promise<string | null>;
 }
@@ -53,6 +54,7 @@ export default function SidePanel({
   depth,
   onDepthChange,
   isThinking,
+  isPondering,
   consideredMove,
   requestBestMove,
 }: SidePanelProps) {
@@ -68,6 +70,18 @@ export default function SidePanel({
             <Loader2 className="h-3 w-3 animate-spin" />
             <span className="text-xs font-medium">
               Thinking...
+              {consideredMove && <span className="font-mono ml-1">{consideredMove}</span>}
+            </span>
+        </div>
+      );
+    }
+    
+    if (isPondering) {
+      return (
+        <div className={`flex items-center gap-1.5 text-muted-foreground`}>
+            <Loader2 className="h-3 w-3 animate-spin" />
+            <span className="text-xs font-medium">
+              Pondering...
               {consideredMove && <span className="font-mono ml-1">{consideredMove}</span>}
             </span>
         </div>
