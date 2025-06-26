@@ -64,6 +64,7 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
     }
 
     onMove(move);
+    setLegalMoves([]); // Clear highlights immediately on drop.
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
