@@ -23,7 +23,7 @@ export default function GrandmasterGuiPage() {
   } = useChessGame();
   const { toast } = useToast();
 
-  const lastMove = moveHistoryIndex > 0 ? history[moveHistoryIndex - 1] : undefined;
+  const lastMove = moveHistoryIndex > 0 && history.length >= moveHistoryIndex ? history[moveHistoryIndex - 1] : undefined;
 
   useEffect(() => {
     if (turn === 'b' && !isGameOver && !isViewingHistory) {
@@ -57,6 +57,7 @@ export default function GrandmasterGuiPage() {
         isGameOver={isGameOver}
         isViewingHistory={isViewingHistory}
         lastMove={lastMove}
+        fen={fen}
       />
       <SidePanel
         status={status}

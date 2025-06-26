@@ -38,7 +38,8 @@ const PieceComponent: FC<{
   piece: PieceType;
   size: number;
   onDragStart: (e: React.DragEvent<HTMLDivElement>, piece: PieceType) => void;
-}> = ({ piece, size, onDragStart }) => {
+  onDragEnd?: () => void;
+}> = ({ piece, size, onDragStart, onDragEnd }) => {
   const pieceSymbol = piece.type.toLowerCase() as PieceSymbol;
   const imageUrl = pieceImages[piece.color][pieceSymbol];
   const altText = `${piece.color === 'w' ? 'White' : 'Black'} ${pieceNames[pieceSymbol]}`;
@@ -47,6 +48,7 @@ const PieceComponent: FC<{
     <div
       draggable="true"
       onDragStart={(e) => onDragStart(e, piece)}
+      onDragEnd={onDragEnd}
       className="flex items-center justify-center w-full h-full cursor-grab active:cursor-grabbing"
     >
       <Image
