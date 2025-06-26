@@ -22,6 +22,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/wikipedia/commons/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'images.chesscomfiles.com',
+        port: '',
+        pathname: '/chess-themes/pieces/**',
+      },
     ],
   },
 };
