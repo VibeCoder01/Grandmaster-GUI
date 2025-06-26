@@ -99,40 +99,32 @@ const evaluateBoard = (game: Chess) => {
     return totalEvaluation;
 };
 
-let nodesSearched = 0;
-const YIELD_AFTER_NODES = 5000;
-
-async function minimax(game: Chess, depth: number, alpha: number, beta: number, isMaximizingPlayer: boolean): Promise<{ score: number, pv: string[] }> {
-    nodesSearched++;
-    if (nodesSearched % YIELD_AFTER_NODES === 0) {
-        await new Promise(resolve => setTimeout(resolve, 0));
-    }
-
+function minimax(game: Chess, depth: number, alpha: number, beta: number, isMaximizingPlayer: boolean): { score: number, pv: string[] } {
     if (depth === 0 || game.isGameOver()) {
         return { score: evaluateBoard(game), pv: [] };
     }
 
-    const moves = game.moves();
-    moves.sort((a, b) => (game.get(b.slice(2,4) as any) ? 1 : 0) - (game.get(a.slice(2,4) as any) ? 1 : 0));
+    const moves = game.moves({verbose: true});
+    moves.sort((a, b) => (b.captured ? 1 : 0) - (a.captured ? 1 : 0));
 
     let bestPV: string[] = [];
     let bestScore = isMaximizingPlayer ? -Infinity : Infinity;
 
     for (const move of moves) {
-        game.move(move);
-        const result = await minimax(game, depth - 1, alpha, beta, !isMaximizingPlayer);
+        game.move(move.san);
+        const result = minimax(game, depth - 1, alpha, beta, !isMaximizingPlayer);
         game.undo();
 
         if (isMaximizingPlayer) {
             if (result.score > bestScore) {
                 bestScore = result.score;
-                bestPV = [move, ...result.pv];
+                bestPV = [move.san, ...result.pv];
             }
             alpha = Math.max(alpha, result.score);
         } else {
             if (result.score < bestScore) {
                 bestScore = result.score;
-                bestPV = [move, ...result.pv];
+                bestPV = [move.san, ...result.pv];
             }
             beta = Math.min(beta, result.score);
         }
@@ -166,7 +158,6 @@ const findBestMove = async (fen: string, depth: number, id: number, isPonder: bo
 
     let bestMove: string | null = null;
     const isMaximizingPlayer = game.turn() === 'w';
-    nodesSearched = 0;
 
     for (let currentDepth = 1; currentDepth <= depth; currentDepth++) {
         let bestValue = isMaximizingPlayer ? -Infinity : Infinity;
@@ -178,7 +169,7 @@ const findBestMove = async (fen: string, depth: number, id: number, isPonder: bo
 
         for (const move of moves) {
             game.move(move);
-            const result = await minimax(game, currentDepth - 1, -Infinity, Infinity, !isMaximizingPlayer);
+            const result = minimax(game, currentDepth - 1, -Infinity, Infinity, !isMaximizingPlayer);
             game.undo();
             movesAnalyzed++;
             
@@ -188,6 +179,9 @@ const findBestMove = async (fen: string, depth: number, id: number, isPonder: bo
             if (!isPonder) {
                 const overallProgress = Math.round((((currentDepth - 1) / depth) + (movesAnalyzed / moveCount / depth)) * 100);
                 self.postMessage({ type: 'progress', id, progress: overallProgress });
+                 // Yield control after analyzing each top-level move when thinking.
+                 // This allows progress messages to be processed by the main thread.
+                await new Promise(resolve => setTimeout(resolve, 0));
             }
 
             const boardValue = result.score;
