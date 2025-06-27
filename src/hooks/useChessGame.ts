@@ -17,8 +17,7 @@ type Action =
   | { type: 'MOVE'; move: string | { from: Square; to: Square; promotion?: string } }
   | { type: 'SET_HISTORY_INDEX'; index: number }
   | { type: 'RESET'; timeControl: number }
-  | { type: 'TICK' }
-  | { type: 'LOAD_GAME'; state: GameState };
+  | { type: 'TICK' };
 
 function getStatus(game: Chess): string {
   if (game.isCheckmate()) return `Checkmate - ${game.turn() === 'w' ? 'Black' : 'White'} wins`;
@@ -102,8 +101,6 @@ function gameReducer(state: GameState, action: Action): GameState {
         isGameOver: state.isGameOver || isTimeout,
       };
     }
-    case 'LOAD_GAME':
-      return action.state;
     default:
       return state;
   }
@@ -136,31 +133,14 @@ export function useChessGame(initialTimeControl: number = 600) {
   const setMoveHistoryIndex = useCallback((index: number) => {
     dispatch({ type: 'SET_HISTORY_INDEX', index });
   }, []);
-
-  const loadGame = useCallback((newState: GameState) => {
-    dispatch({ type: 'LOAD_GAME', state: newState });
-  }, []);
   
-  const game = useMemo(() => {
-    // When loading a game, fen might be out of sync with history momentarily.
-    // Reconstruct game from history for consistency.
-    const g = new Chess();
-    try {
-      state.history.slice(0, state.moveHistoryIndex).forEach(m => g.move(m.san));
-    } catch(e) {
-      console.error("Error replaying history", e);
-      // Fallback to FEN if history is broken
-      return new Chess(state.fen);
-    }
-    return g;
-  }, [state.fen, state.history, state.moveHistoryIndex]);
+  const game = useMemo(() => new Chess(state.fen), [state.fen]);
 
   const status = useMemo(() => {
     if (state.whiteTime <= 0) return 'Black wins on time';
     if (state.blackTime <= 0) return 'White wins on time';
-    const g = new Chess(state.fen);
-    return getStatus(g);
-  }, [state.whiteTime, state.blackTime, state.fen]);
+    return getStatus(game);
+  }, [state.whiteTime, state.blackTime, game]);
 
   const lastMove = useMemo(() => {
     if (state.moveHistoryIndex > 0) {
@@ -169,28 +149,7 @@ export function useChessGame(initialTimeControl: number = 600) {
     return undefined;
   }, [state.history, state.moveHistoryIndex]);
 
-  const { capturedByWhite, capturedByBlack } = useMemo(() => {
-    const capturedByWhite: PieceSymbol[] = [];
-    const capturedByBlack: PieceSymbol[] = [];
-    state.history.forEach(move => {
-        if (move.captured) {
-            if (move.color === 'w') { // White made the move, captured a black piece
-                capturedByWhite.push(move.captured);
-            } else { // Black made the move, captured a white piece
-                capturedByBlack.push(move.captured);
-            }
-        }
-    });
-    
-    const pieceOrder: Record<PieceSymbol, number> = { q: 1, r: 2, b: 3, n: 4, p: 5, k: 0 };
-    capturedByWhite.sort((a, b) => pieceOrder[a] - pieceOrder[b]);
-    capturedByBlack.sort((a, b) => pieceOrder[a] - pieceOrder[b]);
-
-    return { capturedByWhite, capturedByBlack };
-  }, [state.history]);
-
   return {
-    gameState: state,
     fen: game.fen(),
     board: game.board(),
     turn: game.turn(),
@@ -202,11 +161,8 @@ export function useChessGame(initialTimeControl: number = 600) {
     lastMove,
     whiteTime: state.whiteTime,
     blackTime: state.blackTime,
-    capturedByWhite,
-    capturedByBlack,
     makeMove,
     resetGame,
     setMoveHistoryIndex,
-    loadGame,
   };
 }

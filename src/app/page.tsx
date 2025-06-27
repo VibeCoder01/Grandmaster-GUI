@@ -10,7 +10,6 @@ import { Chess, type Move } from "chess.js";
 export default function GrandmasterGuiPage() {
   const [timeControl, setTimeControl] = useState(600);
   const {
-    gameState,
     board,
     fen,
     turn,
@@ -21,12 +20,9 @@ export default function GrandmasterGuiPage() {
     moveHistoryIndex,
     whiteTime,
     blackTime,
-    capturedByWhite,
-    capturedByBlack,
     makeMove,
     resetGame,
     setMoveHistoryIndex,
-    loadGame,
   } = useChessGame(timeControl);
 
   const [depth, setDepth] = useState(2);
@@ -40,40 +36,6 @@ export default function GrandmasterGuiPage() {
   const [showLegalMoveDots, setShowLegalMoveDots] = useState(false);
   const [showLastMove, setShowLastMove] = useState(true);
 
-  const [scores, setScores] = useState({ human: 0, engine: 0 });
-  const [humanPlayerName, setHumanPlayerName] = useState('Human');
-
-
-  useEffect(() => {
-      const savedScores = localStorage.getItem('chessScores');
-      if (savedScores) {
-          setScores(JSON.parse(savedScores));
-      }
-      const savedName = localStorage.getItem('chessPlayerName');
-      if (savedName) {
-          setHumanPlayerName(savedName);
-      }
-  }, []);
-
-  useEffect(() => {
-      localStorage.setItem('chessScores', JSON.stringify(scores));
-  }, [scores]);
-
-  useEffect(() => {
-      localStorage.setItem('chessPlayerName', humanPlayerName);
-  }, [humanPlayerName]);
-  
-  useEffect(() => {
-    if (isGameOver && !isViewingHistory) {
-      // isViewingHistory check prevents score change when browsing old games
-      if (status.includes('White wins')) {
-        setScores(s => ({ ...s, human: s.human + 1 }));
-      } else if (status.includes('Black wins')) {
-        setScores(s => ({ ...s, engine: s.engine + 1 }));
-      }
-    }
-  }, [isGameOver, status, isViewingHistory]);
-
   const workerRef = useRef<Worker | null>(null);
   const nextRequestId = useRef(0);
   const pendingRequests = useRef(new Map<number, { resolve: (value: string | null) => void, options: { isPonder: boolean } }>());
@@ -84,55 +46,6 @@ export default function GrandmasterGuiPage() {
   const handleResetGame = useCallback(() => {
     resetGame(timeControl);
   }, [resetGame, timeControl]);
-  
-  const handleSaveGame = () => {
-    const dataToSave = {
-        gameState,
-        scores,
-        humanPlayerName,
-        timeControl,
-    };
-    const dataStr = JSON.stringify(dataToSave, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.download = `grandmaster-gui-game-${new Date().toISOString().slice(0, 10)}.json`;
-    link.href = url;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
-  const handleLoadGame = (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-          try {
-              const text = e.target?.result;
-              if (typeof text !== 'string') return;
-              const loadedData = JSON.parse(text);
-
-              if (loadedData.gameState && loadedData.scores && loadedData.humanPlayerName && loadedData.timeControl) {
-                  setScores(loadedData.scores);
-                  setHumanPlayerName(loadedData.humanPlayerName);
-                  setTimeControl(loadedData.timeControl);
-                  loadGame(loadedData.gameState);
-              } else {
-                  console.error("Invalid game file format");
-                  // Optionally: show a toast notification
-              }
-          } catch (error) {
-              console.error("Error loading game:", error);
-              // Optionally: show a toast notification
-          }
-      };
-      reader.readAsText(file);
-      event.target.value = ''; // Reset input to allow loading the same file again
-  };
-
 
   useEffect(() => {
     const worker = new Worker(new URL('../lib/engine.worker.ts', import.meta.url));
@@ -211,11 +124,7 @@ export default function GrandmasterGuiPage() {
                 if (isPonderingAnimationEnabled) {
                     setExploredVariation(null);
                 }
-                 if (isPondering) {
-                   // Keep best variation during pondering animation
-                 } else {
-                    setBestVariation(null);
-                 }
+                 // During ponder, don't clear the best variation so it remains visible
             }
         }
     };
@@ -224,7 +133,7 @@ export default function GrandmasterGuiPage() {
         worker.terminate();
         currentSearchId.current = null;
     }
-  }, [isPonderingAnimationEnabled, isPondering]);
+  }, [isPonderingAnimationEnabled]);
 
   const requestBestMove = useCallback((fen: string, depth: number, options: { isPonder: boolean } = { isPonder: false }): Promise<string | null> => {
     const worker = workerRef.current;
@@ -270,7 +179,7 @@ export default function GrandmasterGuiPage() {
           setProgress(0);
           setBestVariation(null);
           const bestMove = await requestBestMove(fen, depth, { isPonder: false });
-          if (currentSearchId.current === null && bestMove) { // Ensure search wasn't cancelled
+          if (bestMove) { // Check ensures that if search is cancelled, no move is made
             makeMove(bestMove);
           }
           setIsThinking(false);
@@ -294,7 +203,6 @@ export default function GrandmasterGuiPage() {
         
         setIsPondering(true);
         setProgress(0);
-        setBestVariation(null);
         ponderCache.current.clear();
 
         const rootGame = new Chess(fen);
@@ -345,10 +253,6 @@ export default function GrandmasterGuiPage() {
   return (
     <main className="flex min-h-screen items-center justify-center p-4 lg:p-8 bg-background gap-8 flex-col lg:flex-row">
       <div className="flex flex-col gap-4 items-center">
-        <div className="text-center">
-            <h1 className="text-2xl font-bold">{humanPlayerName} vs. Engine</h1>
-            <p className="text-xl font-mono">{scores.human} - {scores.engine}</p>
-        </div>
         <Chessboard
           board={board}
           onMove={makeMove}
@@ -389,16 +293,10 @@ export default function GrandmasterGuiPage() {
         blackTime={blackTime}
         timeControl={timeControl}
         onTimeControlChange={setTimeControl}
-        capturedByWhite={capturedByWhite}
-        capturedByBlack={capturedByBlack}
         showLegalMoveDots={showLegalMoveDots}
         onShowLegalMoveDotsChange={setShowLegalMoveDots}
         showLastMove={showLastMove}
         onShowLastMoveChange={setShowLastMove}
-        humanPlayerName={humanPlayerName}
-        onPlayerNameChange={setHumanPlayerName}
-        onSaveGame={handleSaveGame}
-        onLoadGame={handleLoadGame}
       />
     </main>
   );
