@@ -107,6 +107,7 @@ export default function GrandmasterGuiPage() {
         if (type === 'exploring') {
             handleVariation(variation!, false);
         } else if (type === 'interim') {
+            setBestVariation(null);
             handleVariation(variation!, true);
         }
 
@@ -180,6 +181,7 @@ export default function GrandmasterGuiPage() {
         const makeEngineMove = async () => {
           setIsThinking(true);
           setProgress(0);
+          setBestVariation(null);
           const result = await requestBestMove(fen, depth, { isPonder: false });
           if (result && result.move) {
             makeMove(result.move);
@@ -277,8 +279,8 @@ export default function GrandmasterGuiPage() {
   const lastMove = moveHistoryIndex > 0 && history.length >= moveHistoryIndex ? history[moveHistoryIndex - 1] : undefined;
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-4 lg:p-8 bg-background gap-8 flex-col lg:flex-row">
-      <div className="flex flex-col gap-4 items-center">
+    <main className="flex min-h-screen flex-col lg:flex-row p-4 lg:p-8 bg-background gap-8">
+      <div className="flex-1 flex items-center justify-center relative">
         <Chessboard
           board={board}
           onMove={makeMove}
