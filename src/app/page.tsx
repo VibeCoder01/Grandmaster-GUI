@@ -279,56 +279,58 @@ export default function GrandmasterGuiPage() {
   const lastMove = moveHistoryIndex > 0 && history.length >= moveHistoryIndex ? history[moveHistoryIndex - 1] : undefined;
 
   return (
-    <main className="flex min-h-screen flex-col lg:flex-row p-4 lg:p-8 bg-background gap-8">
-      <div className="flex-1 flex items-center justify-center relative">
-        <Chessboard
-          board={board}
-          onMove={makeMove}
+    <div className="h-screen w-screen">
+      <main className="flex h-full flex-col lg:flex-row p-4 lg:p-8 bg-background gap-8">
+        <div className="flex-1 flex items-center justify-center relative">
+          <Chessboard
+            board={board}
+            onMove={makeMove}
+            turn={turn}
+            isGameOver={isGameOver}
+            isViewingHistory={isViewingHistory}
+            lastMove={lastMove}
+            fen={fen}
+            visualizedVariation={exploredVariation}
+            isThinking={isThinking}
+            isPondering={isPondering}
+            status={status}
+            showLegalMoveDots={showLegalMoveDots}
+            showLastMove={showLastMove}
+          />
+        </div>
+        <SidePanel
+          status={status}
           turn={turn}
+          history={history}
+          fen={fen}
           isGameOver={isGameOver}
           isViewingHistory={isViewingHistory}
-          lastMove={lastMove}
-          fen={fen}
-          visualizedVariation={exploredVariation}
+          moveHistoryIndex={moveHistoryIndex}
+          resetGame={handleResetGame}
+          setMoveHistoryIndex={setMoveHistoryIndex}
+          onResign={handleResign}
+          onOfferDraw={handleOfferDraw}
+          isOfferingDraw={isOfferingDraw}
+          depth={depth}
+          onDepthChange={setDepth}
           isThinking={isThinking}
           isPondering={isPondering}
-          status={status}
+          bestVariation={bestVariation}
+          isPonderingEnabled={isPonderingEnabled}
+          onPonderingEnabledChange={setIsPonderingEnabled}
+          isPonderingAnimationEnabled={isPonderingAnimationEnabled}
+          onPonderingAnimationEnabledChange={setIsPonderingAnimationEnabled}
+          progress={progress}
+          whiteTime={whiteTime}
+          blackTime={blackTime}
+          timeControl={timeControl}
+          onTimeControlChange={setTimeControl}
           showLegalMoveDots={showLegalMoveDots}
+          onShowLegalMoveDotsChange={setShowLegalMoveDots}
           showLastMove={showLastMove}
+          onShowLastMoveChange={setShowLastMove}
         />
-      </div>
-      <SidePanel
-        status={status}
-        turn={turn}
-        history={history}
-        fen={fen}
-        isGameOver={isGameOver}
-        isViewingHistory={isViewingHistory}
-        moveHistoryIndex={moveHistoryIndex}
-        resetGame={handleResetGame}
-        setMoveHistoryIndex={setMoveHistoryIndex}
-        onResign={handleResign}
-        onOfferDraw={handleOfferDraw}
-        isOfferingDraw={isOfferingDraw}
-        depth={depth}
-        onDepthChange={setDepth}
-        isThinking={isThinking}
-        isPondering={isPondering}
-        bestVariation={bestVariation}
-        isPonderingEnabled={isPonderingEnabled}
-        onPonderingEnabledChange={setIsPonderingEnabled}
-        isPonderingAnimationEnabled={isPonderingAnimationEnabled}
-        onPonderingAnimationEnabledChange={setIsPonderingAnimationEnabled}
-        progress={progress}
-        whiteTime={whiteTime}
-        blackTime={blackTime}
-        timeControl={timeControl}
-        onTimeControlChange={setTimeControl}
-        showLegalMoveDots={showLegalMoveDots}
-        onShowLegalMoveDotsChange={setShowLegalMoveDots}
-        showLastMove={showLastMove}
-        onShowLastMoveChange={setShowLastMove}
-      />
-    </main>
+      </main>
+    </div>
   );
 }
