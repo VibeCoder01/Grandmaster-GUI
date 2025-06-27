@@ -44,10 +44,12 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
   useEffect(() => {
     if (status === 'Check' && !isGameOver) {
       setShowCheck(true);
-      const timer = setTimeout(() => setShowCheck(false), 1500);
+      const timer = setTimeout(() => setShowCheck(false), 3000);
       return () => clearTimeout(timer);
+    } else {
+      setShowCheck(false);
     }
-  }, [status, isGameOver, fen]);
+  }, [status, isGameOver]);
 
   useEffect(() => {
     function updateSquareSize() {
