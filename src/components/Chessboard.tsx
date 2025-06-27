@@ -272,7 +272,7 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
   return (
     <div
       ref={boardRef}
-      className="grid grid-cols-8 grid-rows-8 border-4 border-card shadow-2xl rounded-lg aspect-square relative max-w-full max-h-full"
+      className="grid grid-cols-8 grid-rows-8 border-4 border-card shadow-2xl rounded-lg aspect-square relative w-[99vw] h-[99vh] max-w-full max-h-full"
       onMouseLeave={() => setAttackedSquares([])}
     >
       {ranks.map((rank, rowIndex) =>
