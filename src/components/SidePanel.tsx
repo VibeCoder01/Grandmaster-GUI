@@ -231,7 +231,7 @@ export default function SidePanel({
             <div className="flex justify-between items-center h-5">
               <div className="text-sm text-muted-foreground">White</div>
               <div className="flex flex-wrap gap-0.5 items-center justify-end">
-                {capturedByBlack.map((p, i) => <PieceImage key={i} pieceType={p} color="w" />)}
+                {capturedByWhite.map((p, i) => <PieceImage key={i} pieceType={p} color="b" />)}
               </div>
             </div>
             <div className="text-xl font-mono font-semibold">{formatTime(whiteTime)}</div>
@@ -240,7 +240,7 @@ export default function SidePanel({
             <div className="flex justify-between items-center h-5">
               <div className="text-sm text-muted-foreground">Black</div>
               <div className="flex flex-wrap gap-0.5 items-center justify-end">
-                {capturedByWhite.map((p, i) => <PieceImage key={i} pieceType={p} color="b" />)}
+                {capturedByBlack.map((p, i) => <PieceImage key={i} pieceType={p} color="w" />)}
               </div>
             </div>
             <div className="text-xl font-mono font-semibold">{formatTime(blackTime)}</div>

@@ -205,25 +205,24 @@ export default function GrandmasterGuiPage() {
         const rootGame = new Chess(fen);
         const legalMoves = rootGame.moves({ verbose: true });
         let ponderJobsCompleted = 0;
+        
+        for (const move of legalMoves) {
+            if (isCancelled) break;
 
-        const ponderJobs = legalMoves.map(async (move) => {
-            if (isCancelled) return;
             const gameForMove = new Chess(fen);
             gameForMove.move(move.san);
             const fenAfterMove = gameForMove.fen();
             
             const counterMove = await requestBestMove(fenAfterMove, depth, { isPonder: true });
             
-            if (isCancelled) return;
+            if (isCancelled) break;
             ponderCache.current.set(fenAfterMove, counterMove);
             
             ponderJobsCompleted++;
             if (!isCancelled) {
               setProgress(Math.round((ponderJobsCompleted / legalMoves.length) * 100));
             }
-        });
-
-        await Promise.all(ponderJobs);
+        }
 
         if (!isCancelled) {
           setIsPondering(false);
