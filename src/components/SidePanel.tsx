@@ -137,9 +137,17 @@ export default function SidePanel({
     
     if (turn === 'w' && !isViewingHistory) {
         return (
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-                <Hourglass className="h-3 w-3" />
-                <span className="text-xs font-medium">Waiting...</span>
+            <div className="flex w-full flex-col gap-2">
+                <div className="flex flex-col gap-1 text-xs text-muted-foreground flex-grow">
+                    <div className="flex items-center gap-1.5">
+                        <Hourglass className="h-3 w-3" />
+                        <span className="font-medium">Waiting...</span>
+                    </div>
+                    <p className="font-mono ml-[1.125rem] break-all leading-tight min-h-[1.25em]">
+                        &nbsp;
+                    </p>
+                </div>
+              <div className="h-1 w-full" />
             </div>
         );
     }
