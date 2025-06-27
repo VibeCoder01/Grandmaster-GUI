@@ -8,7 +8,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { Chess, type Move } from "chess.js";
 
 export default function GrandmasterGuiPage() {
-  const [timeControl, setTimeControl] = useState(300);
+  const [timeControl, setTimeControl] = useState(600);
   const {
     board,
     fen,
@@ -33,9 +33,9 @@ export default function GrandmasterGuiPage() {
   const [bestVariation, setBestVariation] = useState<Move[] | null>(null);
   const [exploredVariation, setExploredVariation] = useState<Move[] | null>(null);
   const [isPonderingEnabled, setIsPonderingEnabled] = useState(true);
-  const [isPonderingAnimationEnabled, setIsPonderingAnimationEnabled] = useState(true);
+  const [isPonderingAnimationEnabled, setIsPonderingAnimationEnabled] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [showLegalMoveDots, setShowLegalMoveDots] = useState(true);
+  const [showLegalMoveDots, setShowLegalMoveDots] = useState(false);
   const [showLastMove, setShowLastMove] = useState(true);
 
   const workerRef = useRef<Worker | null>(null);
@@ -60,7 +60,7 @@ export default function GrandmasterGuiPage() {
         if (!request) return;
 
         if (type === 'progress') {
-            if (id === currentSearchId.current && !request.options.isPonder) {
+            if (id === currentSearchId.current || request.options.isPonder) {
                 setProgress(newProgress!);
             }
             return;
@@ -92,7 +92,7 @@ export default function GrandmasterGuiPage() {
 
              if (validVariation) {
                  if (isBest) {
-                   setBestVariation(moveObjects);
+                    setBestVariation(moveObjects);
                  } else {
                    if (isPonderingAnimationEnabled && (isPonder || id === currentSearchId.current)) {
                      setExploredVariation(moveObjects);
@@ -178,6 +178,7 @@ export default function GrandmasterGuiPage() {
         const makeEngineMove = async () => {
           setIsThinking(true);
           setProgress(0);
+          setBestVariation(null);
           const bestMove = await requestBestMove(fen, depth, { isPonder: false });
           if (currentSearchId.current === null && bestMove) {
             makeMove(bestMove);
@@ -212,11 +213,6 @@ export default function GrandmasterGuiPage() {
         for (const move of legalMoves) {
             if (isCancelled) break;
             
-            const progress = Math.round(((legalMoves.indexOf(move) + 1) / legalMoves.length) * 100);
-            if (!isCancelled) {
-              setProgress(progress);
-            }
-            
             await new Promise(resolve => setTimeout(resolve, 0));
             if (isCancelled) break;
 
@@ -228,6 +224,11 @@ export default function GrandmasterGuiPage() {
             
             if (isCancelled) break;
             ponderCache.current.set(fenAfterMove, counterMove);
+
+            const progress = Math.round(((legalMoves.indexOf(move) + 1) / legalMoves.length) * 100);
+            if (!isCancelled) {
+              setProgress(progress);
+            }
         }
 
         if (!isCancelled) {
@@ -247,6 +248,7 @@ export default function GrandmasterGuiPage() {
       isCancelled = true;
       setIsPondering(false);
       setProgress(0);
+      setExploredVariation(null);
       setBestVariation(null);
     };
   }, [turn, fen, isGameOver, isViewingHistory, depth, requestBestMove, isPonderingEnabled]);
