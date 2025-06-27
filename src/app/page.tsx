@@ -85,12 +85,6 @@ export default function GrandmasterGuiPage() {
     resetGame(timeControl);
   }, [resetGame, timeControl]);
   
-  const handlePlayNow = () => {
-    if (workerRef.current && currentSearchId.current !== null) {
-      workerRef.current.postMessage({ type: 'stop', id: currentSearchId.current });
-    }
-  };
-
   const handleSaveGame = () => {
     const dataToSave = {
         gameState,
@@ -151,7 +145,7 @@ export default function GrandmasterGuiPage() {
         if (!request) return;
 
         if (type === 'progress') {
-            if (id === currentSearchId.current || request.options.isPonder) {
+            if (id === currentSearchId.current) {
                 setProgress(newProgress!);
             }
             return;
@@ -217,7 +211,11 @@ export default function GrandmasterGuiPage() {
                 if (isPonderingAnimationEnabled) {
                     setExploredVariation(null);
                 }
-                setBestVariation(null);
+                 if (isPondering) {
+                   // Keep best variation during pondering animation
+                 } else {
+                    setBestVariation(null);
+                 }
             }
         }
     };
@@ -226,7 +224,7 @@ export default function GrandmasterGuiPage() {
         worker.terminate();
         currentSearchId.current = null;
     }
-  }, [isPonderingAnimationEnabled]);
+  }, [isPonderingAnimationEnabled, isPondering]);
 
   const requestBestMove = useCallback((fen: string, depth: number, options: { isPonder: boolean } = { isPonder: false }): Promise<string | null> => {
     const worker = workerRef.current;
@@ -272,7 +270,7 @@ export default function GrandmasterGuiPage() {
           setProgress(0);
           setBestVariation(null);
           const bestMove = await requestBestMove(fen, depth, { isPonder: false });
-          if (currentSearchId.current === null && bestMove) {
+          if (currentSearchId.current === null && bestMove) { // Ensure search wasn't cancelled
             makeMove(bestMove);
           }
           setIsThinking(false);
@@ -288,7 +286,6 @@ export default function GrandmasterGuiPage() {
 
   useEffect(() => {
     let isCancelled = false;
-    let ponderIds: number[] = [];
 
     if (isPonderingEnabled && turn === 'w' && !isGameOver && !isViewingHistory) {
       const ponder = async () => {
@@ -310,12 +307,7 @@ export default function GrandmasterGuiPage() {
             gameForMove.move(move.san);
             const fenAfterMove = gameForMove.fen();
             
-            const ponderPromise = requestBestMove(fenAfterMove, depth, { isPonder: true });
-            
-            const currentPonderId = nextRequestId.current - 1;
-            ponderIds.push(currentPonderId);
-
-            const counterMove = await ponderPromise;
+            const counterMove = await requestBestMove(fenAfterMove, depth, { isPonder: true });
             
             if (isCancelled) break;
             ponderCache.current.set(fenAfterMove, counterMove);
@@ -341,7 +333,6 @@ export default function GrandmasterGuiPage() {
 
     return () => {
       isCancelled = true;
-      ponderIds.forEach(id => workerRef.current?.postMessage({ type: 'stop', id }));
       setIsPondering(false);
       setProgress(0);
       setExploredVariation(null);
@@ -404,7 +395,6 @@ export default function GrandmasterGuiPage() {
         onShowLegalMoveDotsChange={setShowLegalMoveDots}
         showLastMove={showLastMove}
         onShowLastMoveChange={setShowLastMove}
-        onPlayNow={handlePlayNow}
         humanPlayerName={humanPlayerName}
         onPlayerNameChange={setHumanPlayerName}
         onSaveGame={handleSaveGame}

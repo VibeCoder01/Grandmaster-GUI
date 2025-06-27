@@ -99,13 +99,7 @@ const evaluateBoard = (game: Chess) => {
     return totalEvaluation;
 };
 
-const activeSearches = new Map<number, { stop: boolean }>();
-
-async function minimax(game: Chess, depth: number, alpha: number, beta: number, isMaximizingPlayer: boolean, searchId: number): Promise<{ score: number, pv: string[] }> {
-    if (activeSearches.get(searchId)?.stop) {
-        return { score: isMaximizingPlayer ? -Infinity : Infinity, pv: [] };
-    }
-    
+async function minimax(game: Chess, depth: number, alpha: number, beta: number, isMaximizingPlayer: boolean): Promise<{ score: number, pv: string[] }> {
     if (depth === 0 || game.isGameOver()) {
         return { score: evaluateBoard(game), pv: [] };
     }
@@ -119,10 +113,8 @@ async function minimax(game: Chess, depth: number, alpha: number, beta: number, 
     let bestScore = isMaximizingPlayer ? -Infinity : Infinity;
 
     for (const move of moves) {
-        if (activeSearches.get(searchId)?.stop) break;
-
         game.move(move.san);
-        const result = await minimax(game, depth - 1, alpha, beta, !isMaximizingPlayer, searchId);
+        const result = await minimax(game, depth - 1, alpha, beta, !isMaximizingPlayer);
         game.undo();
 
         if (isMaximizingPlayer) {
@@ -146,24 +138,20 @@ async function minimax(game: Chess, depth: number, alpha: number, beta: number, 
 };
 
 const findBestMove = async (fen: string, depth: number, id: number, isPonder: boolean, isPonderingAnimationEnabled: boolean) => {
-    activeSearches.set(id, { stop: false });
     const game = new Chess(fen);
     if (game.isGameOver()) {
         self.postMessage({ type: 'final', id, move: null });
-        activeSearches.delete(id);
         return;
     }
 
     const moves = game.moves({ verbose: true });
     if (moves.length === 0) {
         self.postMessage({ type: 'final', id, move: null });
-        activeSearches.delete(id);
         return;
     }
     if (moves.length === 1) {
         self.postMessage({ type: 'interim', id, variation: [moves[0].san] });
         self.postMessage({ type: 'final', id, move: moves[0].san });
-        activeSearches.delete(id);
         return;
     }
 
@@ -175,15 +163,11 @@ const findBestMove = async (fen: string, depth: number, id: number, isPonder: bo
     let movesAnalyzed = 0;
 
     for (const move of moves) {
-        if (activeSearches.get(id)?.stop) break;
-
         await new Promise(resolve => setTimeout(resolve, 0));
 
         game.move(move.san);
-        const result = await minimax(game, depth - 1, -Infinity, Infinity, !isMaximizingPlayer, id);
+        const result = await minimax(game, depth - 1, -Infinity, Infinity, !isMaximizingPlayer);
         game.undo();
-        
-        if (activeSearches.get(id)?.stop) break;
         
         const exploredVariation = [move.san, ...result.pv];
         if (isPonderingAnimationEnabled) {
@@ -215,21 +199,13 @@ const findBestMove = async (fen: string, depth: number, id: number, isPonder: bo
     
     const finalMove = bestMove || moves[Math.floor(Math.random() * moves.length)].san;
     self.postMessage({ type: 'final', id, move: finalMove });
-    activeSearches.delete(id);
 };
 
 
 // --- Worker Listener ---
 
-self.onmessage = async (e: MessageEvent<{ id: number, fen?: string, depth?: number, isPonder?: boolean, type: 'start' | 'stop', isPonderingAnimationEnabled?: boolean }>) => {
-    const { id, fen, depth, isPonder, type, isPonderingAnimationEnabled } = e.data;
-    
-    if (type === 'stop') {
-        if (activeSearches.has(id)) {
-            activeSearches.get(id)!.stop = true;
-        }
-        return;
-    }
+self.onmessage = async (e: MessageEvent<{ id: number, fen?: string, depth?: number, isPonder?: boolean, type: 'start', isPonderingAnimationEnabled?: boolean }>) => {
+    const { id, fen, depth, isPonder, isPonderingAnimationEnabled } = e.data;
     
     if (fen && depth) {
       await findBestMove(fen, depth, id, !!isPonder, !!isPonderingAnimationEnabled);

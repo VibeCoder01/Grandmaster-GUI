@@ -8,7 +8,7 @@ import MoveHistory from './MoveHistory';
 import GameControls from './GameControls';
 import AiHint from './AiHint';
 import { Badge } from '@/components/ui/badge';
-import { Hourglass, Loader2, Play, Settings, Save, FolderOpen } from 'lucide-react';
+import { Hourglass, Loader2, Settings, Save, FolderOpen } from 'lucide-react';
 import { Button } from './ui/button';
 import {
   Dialog,
@@ -57,7 +57,6 @@ interface SidePanelProps {
   onShowLegalMoveDotsChange: (checked: boolean) => void;
   showLastMove: boolean;
   onShowLastMoveChange: (checked: boolean) => void;
-  onPlayNow: () => void;
   humanPlayerName: string;
   onPlayerNameChange: (name: string) => void;
   onSaveGame: () => void;
@@ -94,7 +93,6 @@ export default function SidePanel({
   onShowLegalMoveDotsChange,
   showLastMove,
   onShowLastMoveChange,
-  onPlayNow,
   humanPlayerName,
   onPlayerNameChange,
   onSaveGame,
@@ -117,19 +115,16 @@ export default function SidePanel({
     if (isThinking) {
       return (
         <div className="flex w-full flex-col gap-2">
-            <div className="flex items-center justify-between gap-2">
-                <div className="flex flex-col gap-1 text-xs text-muted-foreground flex-grow">
-                    <div className="flex items-center gap-1.5">
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        <span className="font-medium">Thinking...</span>
-                    </div>
-                    {variationString && (
-                        <p className="font-mono ml-[1.125rem] break-all leading-tight">
-                        {variationString}
-                        </p>
-                    )}
+            <div className="flex flex-col gap-1 text-xs text-muted-foreground flex-grow">
+                <div className="flex items-center gap-1.5">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <span className="font-medium">Thinking...</span>
                 </div>
-                <Button onClick={onPlayNow} disabled={!bestVariation} size="sm" variant="secondary"><Play className="mr-2 h-4 w-4" />Play</Button>
+                {variationString && (
+                    <p className="font-mono ml-[1.125rem] break-all leading-tight">
+                    {variationString}
+                    </p>
+                )}
             </div>
           <Progress value={progress} className="h-1 w-full" />
         </div>
