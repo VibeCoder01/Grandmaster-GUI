@@ -45,7 +45,7 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
   useEffect(() => {
     if (status === 'Check' && !isGameOver) {
       setShowCheck(true);
-      const timer = setTimeout(() => setShowCheck(false), 3000);
+      const timer = setTimeout(() => setShowCheck(false), 2000);
       return () => clearTimeout(timer);
     } else {
       setShowCheck(false);
@@ -370,7 +370,7 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
       {(isCheckmate || showCheck) && (
         <div className="absolute inset-0 bg-black/50 flex items-center justify-center pointer-events-none z-30">
           <div className="text-white text-4xl lg:text-6xl font-bold drop-shadow-lg animate-in fade-in zoom-in-50">
-            {isCheckmate ? "Checkmate" : "Check"}
+            {isCheckmate ? `Checkmate! ${turn === 'w' ? 'Black' : 'White'} wins.` : "Check"}
           </div>
         </div>
       )}
