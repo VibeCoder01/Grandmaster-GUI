@@ -1,5 +1,5 @@
 
-import { Chess, type Move } from 'chess.js';
+import { Chess } from 'chess.js';
 
 // --- Engine Logic (moved from engine.ts) ---
 
@@ -154,51 +154,46 @@ const findBestMove = async (fen: string, depth: number, id: number, isPonder: bo
     }
 
     let bestMove: string | null = null;
+    let bestVariation: string[] = [];
     const isMaximizingPlayer = game.turn() === 'w';
+    let bestValue = isMaximizingPlayer ? -Infinity : Infinity;
+    
+    let movesAnalyzed = 0;
 
-    const totalMovesToConsider = moves.length * depth;
-    let movesAnalyzedOverall = 0;
+    for (const move of moves) {
+        // Yield to the event loop before starting a new heavy calculation
+        await new Promise(resolve => setTimeout(resolve, 0));
 
-    for (let currentDepth = 1; currentDepth <= depth; currentDepth++) {
-        let bestValue = isMaximizingPlayer ? -Infinity : Infinity;
-        let currentBestMoveForDepth: string | null = null;
-        let bestVariationForDepth: string[] = [];
+        game.move(move.san);
+        const result = await minimax(game, depth - 1, -Infinity, Infinity, !isMaximizingPlayer);
+        game.undo();
         
-        for (const move of moves) {
-            if (!isPonder) {
-                 await new Promise(resolve => setTimeout(resolve, 0));
-                 movesAnalyzedOverall++;
-                 const progress = Math.round((movesAnalyzedOverall / totalMovesToConsider) * 100);
-                 self.postMessage({ type: 'progress', id, progress });
-            }
-
-            game.move(move.san);
-            const result = await minimax(game, currentDepth - 1, -Infinity, Infinity, !isMaximizingPlayer);
-            game.undo();
-            
-            const exploredVariation = [move.san, ...result.pv];
+        const exploredVariation = [move.san, ...result.pv];
+        if (!isPonder) {
             self.postMessage({ type: 'exploring', id, variation: exploredVariation });
+        }
 
-            const boardValue = result.score;
-            
-            if (isMaximizingPlayer) {
-                if (boardValue > bestValue) {
-                    bestValue = boardValue;
-                    currentBestMoveForDepth = move.san;
-                    bestVariationForDepth = [move.san, ...result.pv];
-                }
-            } else {
-                if (boardValue < bestValue) {
-                    bestValue = boardValue;
-                    currentBestMoveForDepth = move.san;
-                    bestVariationForDepth = [move.san, ...result.pv];
-                }
+        const boardValue = result.score;
+        if (isMaximizingPlayer) {
+            if (boardValue > bestValue) {
+                bestValue = boardValue;
+                bestMove = move.san;
+                bestVariation = exploredVariation;
+                self.postMessage({ type: 'interim', id, variation: bestVariation });
+            }
+        } else {
+            if (boardValue < bestValue) {
+                bestValue = boardValue;
+                bestMove = move.san;
+                bestVariation = exploredVariation;
+                self.postMessage({ type: 'interim', id, variation: bestVariation });
             }
         }
         
-        if (currentBestMoveForDepth) {
-            bestMove = currentBestMoveForDepth;
-            self.postMessage({ type: 'interim', id, variation: bestVariationForDepth });
+        movesAnalyzed++;
+        if (!isPonder) {
+            const progress = Math.round((movesAnalyzed / moves.length) * 100);
+            self.postMessage({ type: 'progress', id, progress });
         }
     }
     

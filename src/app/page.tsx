@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Chess, type Move } from "chess.js";
 
 export default function GrandmasterGuiPage() {
+  const [timeControl, setTimeControl] = useState(300);
   const {
     board,
     fen,
@@ -20,10 +21,13 @@ export default function GrandmasterGuiPage() {
     moveHistoryIndex,
     whiteTime,
     blackTime,
+    capturedByWhite,
+    capturedByBlack,
     makeMove,
     resetGame,
     setMoveHistoryIndex,
-  } = useChessGame();
+  } = useChessGame(timeControl);
+
   const { toast } = useToast();
   const [depth, setDepth] = useState(2);
   const [isThinking, setIsThinking] = useState(false);
@@ -41,6 +45,10 @@ export default function GrandmasterGuiPage() {
   const searchFenMapRef = useRef(new Map<number, string>());
   const ponderCache = useRef(new Map<string, string | null>());
 
+  const handleResetGame = useCallback(() => {
+    resetGame(timeControl);
+  }, [resetGame, timeControl]);
+
   useEffect(() => {
     const worker = new Worker(new URL('../lib/engine.worker.ts', import.meta.url));
     workerRef.current = worker;
@@ -52,7 +60,7 @@ export default function GrandmasterGuiPage() {
         if (!request) return;
 
         if (type === 'progress') {
-            if (id === currentSearchId.current) { // Only update progress for the "thinking" search
+            if (id === currentSearchId.current && !request.options.isPonder) {
                 setProgress(newProgress!);
             }
             return;
@@ -172,6 +180,7 @@ export default function GrandmasterGuiPage() {
           }
           setIsThinking(false);
           setProgress(0);
+          setBestVariation(null);
         };
         makeEngineMove();
       }
@@ -220,6 +229,7 @@ export default function GrandmasterGuiPage() {
           setIsPondering(false);
           setExploredVariation(null);
           setProgress(0);
+          setBestVariation(null);
         }
       };
       
@@ -232,6 +242,7 @@ export default function GrandmasterGuiPage() {
       isCancelled = true;
       setIsPondering(false);
       setProgress(0);
+      setBestVariation(null);
     };
   }, [turn, fen, isGameOver, isViewingHistory, depth, requestBestMove, isPonderingEnabled]);
 
@@ -269,7 +280,7 @@ export default function GrandmasterGuiPage() {
         isGameOver={isGameOver}
         isViewingHistory={isViewingHistory}
         moveHistoryIndex={moveHistoryIndex}
-        resetGame={resetGame}
+        resetGame={handleResetGame}
         setMoveHistoryIndex={setMoveHistoryIndex}
         depth={depth}
         onDepthChange={setDepth}
@@ -283,6 +294,10 @@ export default function GrandmasterGuiPage() {
         progress={progress}
         whiteTime={whiteTime}
         blackTime={blackTime}
+        timeControl={timeControl}
+        onTimeControlChange={setTimeControl}
+        capturedByWhite={capturedByWhite}
+        capturedByBlack={capturedByBlack}
       />
     </main>
   );

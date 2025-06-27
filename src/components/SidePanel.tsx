@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Move } from 'chess.js';
+import type { Move, PieceSymbol } from 'chess.js';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import MoveHistory from './MoveHistory';
@@ -25,6 +25,7 @@ import { Slider } from './ui/slider';
 import { Switch } from './ui/switch';
 import { cn } from '@/lib/utils';
 import { Progress } from './ui/progress';
+import PieceImage from './PieceImage';
 
 interface SidePanelProps {
   status: string;
@@ -48,6 +49,10 @@ interface SidePanelProps {
   progress: number;
   whiteTime: number;
   blackTime: number;
+  timeControl: number;
+  onTimeControlChange: (value: number) => void;
+  capturedByWhite: PieceSymbol[];
+  capturedByBlack: PieceSymbol[];
 }
 
 export default function SidePanel({
@@ -71,7 +76,11 @@ export default function SidePanel({
   onPonderingAnimationEnabledChange,
   progress,
   whiteTime,
-  blackTime
+  blackTime,
+  timeControl,
+  onTimeControlChange,
+  capturedByWhite,
+  capturedByBlack
 }: SidePanelProps) {
 
   const formatTime = (timeInSeconds: number) => {
@@ -146,21 +155,25 @@ export default function SidePanel({
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Engine Settings</DialogTitle>
-                <DialogDescription>Configure the chess engine.</DialogDescription>
+                <DialogDescription>Configure the chess engine and game settings.</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className='space-y-2'>
-                    <Label htmlFor="engine-type">Engine Type</Label>
-                    <Select defaultValue="internal" disabled>
-                        <SelectTrigger id="engine-type">
-                            <SelectValue placeholder="Select engine type" />
+                    <Label htmlFor="time-control">Time Control</Label>
+                    <Select value={timeControl.toString()} onValueChange={(v) => onTimeControlChange(parseInt(v, 10))}>
+                        <SelectTrigger id="time-control">
+                            <SelectValue placeholder="Select time control" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="internal">Internal Engine</SelectItem>
-                            <SelectItem value="external" disabled>External UCI Engine (planned)</SelectItem>
+                            <SelectItem value="300">5 Minutes</SelectItem>
+                            <SelectItem value="600">10 Minutes</SelectItem>
+                            <SelectItem value="900">15 Minutes</SelectItem>
+                            <SelectItem value="1800">30 Minutes</SelectItem>
+                            <SelectItem value="3600">60 Minutes</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
+                 <Separator />
                 <div className='space-y-2'>
                     <Label htmlFor="depth">Look-ahead Depth</Label>
                     <div className="flex items-center gap-4 pt-2">
@@ -214,12 +227,22 @@ export default function SidePanel({
           </Dialog>
         </div>
         <div className="grid grid-cols-2 gap-2 text-center">
-          <div className={cn("p-2 rounded-lg bg-card text-card-foreground space-y-1", turn === 'w' && "ring-2 ring-accent")}>
-            <div className="text-sm text-muted-foreground">White</div>
+          <div className={cn("p-2 rounded-lg bg-card text-card-foreground space-y-1", turn === 'w' && !isGameOver && "ring-2 ring-accent")}>
+            <div className="flex justify-between items-center h-5">
+              <div className="text-sm text-muted-foreground">White</div>
+              <div className="flex flex-wrap gap-0.5 items-center justify-end">
+                {capturedByBlack.map((p, i) => <PieceImage key={i} pieceType={p} color="w" />)}
+              </div>
+            </div>
             <div className="text-xl font-mono font-semibold">{formatTime(whiteTime)}</div>
           </div>
-          <div className={cn("p-2 rounded-lg bg-card text-card-foreground space-y-1", turn === 'b' && "ring-2 ring-accent")}>
-            <div className="text-sm text-muted-foreground">Black</div>
+          <div className={cn("p-2 rounded-lg bg-card text-card-foreground space-y-1", turn === 'b' && !isGameOver && "ring-2 ring-accent")}>
+            <div className="flex justify-between items-center h-5">
+              <div className="text-sm text-muted-foreground">Black</div>
+              <div className="flex flex-wrap gap-0.5 items-center justify-end">
+                {capturedByWhite.map((p, i) => <PieceImage key={i} pieceType={p} color="b" />)}
+              </div>
+            </div>
             <div className="text-xl font-mono font-semibold">{formatTime(blackTime)}</div>
           </div>
         </div>

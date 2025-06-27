@@ -2,7 +2,7 @@
 "use client";
 
 import { useReducer, useCallback, useMemo, useEffect } from 'react';
-import { Chess, type Square, type Piece as PieceInfo, type Move } from 'chess.js';
+import { Chess, type Square, type PieceSymbol, type Move } from 'chess.js';
 
 type GameState = {
   fen: string;
@@ -16,7 +16,7 @@ type GameState = {
 type Action =
   | { type: 'MOVE'; move: string | { from: Square; to: Square; promotion?: string } }
   | { type: 'SET_HISTORY_INDEX'; index: number }
-  | { type: 'RESET' }
+  | { type: 'RESET'; timeControl: number }
   | { type: 'TICK' };
 
 function getStatus(game: Chess): string {
@@ -29,15 +29,15 @@ function getStatus(game: Chess): string {
   return 'In Progress';
 }
 
-function createInitialState(): GameState {
+function createInitialState(timeControl: number): GameState {
     const game = new Chess();
     return {
         fen: game.fen(),
         history: [],
         isGameOver: false,
         moveHistoryIndex: 0,
-        whiteTime: 300, // 5 minutes
-        blackTime: 300,
+        whiteTime: timeControl,
+        blackTime: timeControl,
     };
 }
 
@@ -78,7 +78,7 @@ function gameReducer(state: GameState, action: Action): GameState {
       };
     }
     case 'RESET':
-      return createInitialState();
+      return createInitialState(action.timeControl);
       
     case 'TICK': {
       if (state.isGameOver || state.moveHistoryIndex < state.history.length) return state;
@@ -103,8 +103,8 @@ function gameReducer(state: GameState, action: Action): GameState {
   }
 }
 
-export function useChessGame() {
-  const [state, dispatch] = useReducer(gameReducer, createInitialState());
+export function useChessGame(initialTimeControl: number = 300) {
+  const [state, dispatch] = useReducer(gameReducer, initialTimeControl, createInitialState);
 
   useEffect(() => {
     if (state.isGameOver || state.moveHistoryIndex < state.history.length) {
@@ -123,8 +123,8 @@ export function useChessGame() {
     dispatch({ type: 'MOVE', move });
   }, []);
 
-  const resetGame = useCallback(() => {
-    dispatch({ type: 'RESET' });
+  const resetGame = useCallback((timeControl: number) => {
+    dispatch({ type: 'RESET', timeControl });
   }, []);
 
   const setMoveHistoryIndex = useCallback((index: number) => {
@@ -146,6 +146,26 @@ export function useChessGame() {
     return undefined;
   }, [state.history, state.moveHistoryIndex]);
 
+  const { capturedByWhite, capturedByBlack } = useMemo(() => {
+    const capturedByWhite: PieceSymbol[] = [];
+    const capturedByBlack: PieceSymbol[] = [];
+    state.history.forEach(move => {
+        if (move.captured) {
+            if (move.color === 'w') { // White made the move, captured a black piece
+                capturedByWhite.push(move.captured);
+            } else { // Black made the move, captured a white piece
+                capturedByBlack.push(move.captured);
+            }
+        }
+    });
+    
+    const pieceOrder: Record<PieceSymbol, number> = { q: 1, r: 2, b: 3, n: 4, p: 5, k: 0 };
+    capturedByWhite.sort((a, b) => pieceOrder[a] - pieceOrder[b]);
+    capturedByBlack.sort((a, b) => pieceOrder[a] - pieceOrder[b]);
+
+    return { capturedByWhite, capturedByBlack };
+  }, [state.history]);
+
   return {
     fen: state.fen,
     board: game.board(),
@@ -158,6 +178,8 @@ export function useChessGame() {
     lastMove,
     whiteTime: state.whiteTime,
     blackTime: state.blackTime,
+    capturedByWhite,
+    capturedByBlack,
     makeMove,
     resetGame,
     setMoveHistoryIndex,
