@@ -6,6 +6,7 @@ import SidePanel from "@/components/SidePanel";
 import { useChessGame } from "@/hooks/useChessGame";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Chess, type Move } from "chess.js";
+import { useToast } from "@/hooks/use-toast";
 
 export default function GrandmasterGuiPage() {
   const [timeControl, setTimeControl] = useState(600);
@@ -23,11 +24,14 @@ export default function GrandmasterGuiPage() {
     makeMove,
     resetGame,
     setMoveHistoryIndex,
+    forceEndGame,
   } = useChessGame(timeControl);
 
+  const { toast } = useToast();
   const [depth, setDepth] = useState(2);
   const [isThinking, setIsThinking] = useState(false);
   const [isPondering, setIsPondering] = useState(false);
+  const [isOfferingDraw, setIsOfferingDraw] = useState(false);
   const [bestVariation, setBestVariation] = useState<Move[] | null>(null);
   const [exploredVariation, setExploredVariation] = useState<Move[] | null>(null);
   const [isPonderingEnabled, setIsPonderingEnabled] = useState(true);
@@ -38,10 +42,10 @@ export default function GrandmasterGuiPage() {
 
   const workerRef = useRef<Worker | null>(null);
   const nextRequestId = useRef(0);
-  const pendingRequests = useRef(new Map<number, { resolve: (value: string | null) => void, options: { isPonder: boolean } }>());
+  const pendingRequests = useRef(new Map<number, { resolve: (value: { move: string | null, score: number } | null) => void, options: { isPonder: boolean } }>());
   const currentSearchId = useRef<number | null>(null);
   const searchFenMapRef = useRef(new Map<number, string>());
-  const ponderCache = useRef(new Map<string, string | null>());
+  const ponderCache = useRef(new Map<string, { move: string | null, score: number } | null>());
 
   const handleResetGame = useCallback(() => {
     resetGame(timeControl);
@@ -51,8 +55,8 @@ export default function GrandmasterGuiPage() {
     const worker = new Worker(new URL('../lib/engine.worker.ts', import.meta.url));
     workerRef.current = worker;
 
-    worker.onmessage = (e: MessageEvent<{id: number, move?: string | null, variation?: string[], type: string, progress?: number}>) => {
-        const { id, move, variation, type, progress: newProgress } = e.data;
+    worker.onmessage = (e: MessageEvent<{id: number, move?: string | null, score?: number, variation?: string[], type: string, progress?: number}>) => {
+        const { id, move, score, variation, type, progress: newProgress } = e.data;
         
         const request = pendingRequests.current.get(id);
         if (!request) return;
@@ -113,7 +117,7 @@ export default function GrandmasterGuiPage() {
             
             const { resolve } = request;
             if (resolve) {
-                resolve(move ?? null);
+                resolve({ move: move ?? null, score: score ?? 0 });
                 pendingRequests.current.delete(id);
             }
             searchFenMapRef.current.delete(id);
@@ -124,7 +128,7 @@ export default function GrandmasterGuiPage() {
                 if (isPonderingAnimationEnabled) {
                     setExploredVariation(null);
                 }
-                 // During ponder, don't clear the best variation so it remains visible
+                 setBestVariation(null);
             }
         }
     };
@@ -135,7 +139,7 @@ export default function GrandmasterGuiPage() {
     }
   }, [isPonderingAnimationEnabled]);
 
-  const requestBestMove = useCallback((fen: string, depth: number, options: { isPonder: boolean } = { isPonder: false }): Promise<string | null> => {
+  const requestBestMove = useCallback((fen: string, depth: number, options: { isPonder: boolean } = { isPonder: false }): Promise<{ move: string | null; score: number } | null> => {
     const worker = workerRef.current;
     if (!worker) {
         return Promise.resolve(null);
@@ -156,7 +160,7 @@ export default function GrandmasterGuiPage() {
       currentSearchId.current = id;
     }
 
-    const promise = new Promise<string | null>((resolve) => {
+    const promise = new Promise<{ move: string | null; score: number } | null>((resolve) => {
         pendingRequests.current.set(id, { resolve, options });
     });
 
@@ -168,19 +172,19 @@ export default function GrandmasterGuiPage() {
   useEffect(() => {
     if (turn === 'b' && !isGameOver && !isViewingHistory) {
       const fenAfterPlayerMove = new Chess(fen).fen();
-      const cachedMove = ponderCache.current.get(fenAfterPlayerMove);
+      const cachedResult = ponderCache.current.get(fenAfterPlayerMove);
       
-      if (isPonderingEnabled && cachedMove) {
-          makeMove(cachedMove);
+      if (isPonderingEnabled && cachedResult && cachedResult.move) {
+          makeMove(cachedResult.move);
       } else {
         setIsPondering(false);
         const makeEngineMove = async () => {
           setIsThinking(true);
           setProgress(0);
           setBestVariation(null);
-          const bestMove = await requestBestMove(fen, depth, { isPonder: false });
-          if (bestMove) { // Check ensures that if search is cancelled, no move is made
-            makeMove(bestMove);
+          const result = await requestBestMove(fen, depth, { isPonder: false });
+          if (result && result.move) {
+            makeMove(result.move);
           }
           setIsThinking(false);
           setProgress(0);
@@ -203,6 +207,7 @@ export default function GrandmasterGuiPage() {
         
         setIsPondering(true);
         setProgress(0);
+        setBestVariation(null);
         ponderCache.current.clear();
 
         const rootGame = new Chess(fen);
@@ -215,10 +220,13 @@ export default function GrandmasterGuiPage() {
             gameForMove.move(move.san);
             const fenAfterMove = gameForMove.fen();
             
-            const counterMove = await requestBestMove(fenAfterMove, depth, { isPonder: true });
+            const result = await requestBestMove(fenAfterMove, depth, { isPonder: true });
             
             if (isCancelled) break;
-            ponderCache.current.set(fenAfterMove, counterMove);
+            
+            if (result) {
+              ponderCache.current.set(fenAfterMove, { move: result.move, score: result.score });
+            }
 
             const progress = Math.round(((legalMoves.indexOf(move) + 1) / legalMoves.length) * 100);
             if (!isCancelled) {
@@ -247,6 +255,30 @@ export default function GrandmasterGuiPage() {
       setBestVariation(null);
     };
   }, [turn, fen, isGameOver, isViewingHistory, depth, requestBestMove, isPonderingEnabled]);
+  
+  const handleResign = () => {
+    forceEndGame("You resigned. Black wins.");
+  };
+
+  const handleOfferDraw = async () => {
+    if (turn !== 'w') return;
+    setIsOfferingDraw(true);
+    // The engine (black) wants to minimize the score.
+    // A negative score is good for black. We'll say if black's advantage
+    // is less than half a pawn, it will accept a draw.
+    const result = await requestBestMove(fen, depth, { isPonder: false });
+
+    if (result && result.score >= -50) {
+        forceEndGame("Draw by agreement.");
+    } else {
+        toast({
+            title: "Draw Offer Rejected",
+            description: "The engine wants to play on.",
+        });
+    }
+    setIsOfferingDraw(false);
+  };
+
 
   const lastMove = moveHistoryIndex > 0 && history.length >= moveHistoryIndex ? history[moveHistoryIndex - 1] : undefined;
 
@@ -279,6 +311,9 @@ export default function GrandmasterGuiPage() {
         moveHistoryIndex={moveHistoryIndex}
         resetGame={handleResetGame}
         setMoveHistoryIndex={setMoveHistoryIndex}
+        onResign={handleResign}
+        onOfferDraw={handleOfferDraw}
+        isOfferingDraw={isOfferingDraw}
         depth={depth}
         onDepthChange={setDepth}
         isThinking={isThinking}

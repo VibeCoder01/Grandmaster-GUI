@@ -11,13 +11,15 @@ type GameState = {
   moveHistoryIndex: number;
   whiteTime: number; // in seconds
   blackTime: number; // in seconds
+  forcedStatus?: string;
 };
 
 type Action =
   | { type: 'MOVE'; move: string | { from: Square; to: Square; promotion?: string } }
   | { type: 'SET_HISTORY_INDEX'; index: number }
   | { type: 'RESET'; timeControl: number }
-  | { type: 'TICK' };
+  | { type: 'TICK' }
+  | { type: 'FORCE_END'; status: string };
 
 function getStatus(game: Chess): string {
   if (game.isCheckmate()) return `Checkmate - ${game.turn() === 'w' ? 'Black' : 'White'} wins`;
@@ -46,6 +48,7 @@ function createInitialState(timeControl: number): GameState {
         moveHistoryIndex: 0,
         whiteTime: timeControl,
         blackTime: timeControl,
+        forcedStatus: undefined,
     };
 }
 
@@ -109,6 +112,12 @@ function gameReducer(state: GameState, action: Action): GameState {
         isGameOver: state.isGameOver || isTimeout,
       };
     }
+    case 'FORCE_END':
+      return {
+        ...state,
+        isGameOver: true,
+        forcedStatus: action.status,
+      };
     default:
       return state;
   }
@@ -142,13 +151,18 @@ export function useChessGame(initialTimeControl: number = 600) {
     dispatch({ type: 'SET_HISTORY_INDEX', index });
   }, []);
   
+  const forceEndGame = useCallback((status: string) => {
+    dispatch({ type: 'FORCE_END', status });
+  }, []);
+
   const game = useMemo(() => new Chess(state.fen), [state.fen]);
 
   const status = useMemo(() => {
+    if (state.forcedStatus) return state.forcedStatus;
     if (state.whiteTime <= 0) return 'Black wins on time';
     if (state.blackTime <= 0) return 'White wins on time';
     return getStatus(game);
-  }, [state.whiteTime, state.blackTime, game]);
+  }, [state.whiteTime, state.blackTime, game, state.forcedStatus]);
 
   const lastMove = useMemo(() => {
     if (state.moveHistoryIndex > 0) {
@@ -172,5 +186,6 @@ export function useChessGame(initialTimeControl: number = 600) {
     makeMove,
     resetGame,
     setMoveHistoryIndex,
+    forceEndGame,
   };
 }

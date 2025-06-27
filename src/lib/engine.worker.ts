@@ -140,18 +140,22 @@ async function minimax(game: Chess, depth: number, alpha: number, beta: number, 
 const findBestMove = async (fen: string, depth: number, id: number, isPonder: boolean, isPonderingAnimationEnabled: boolean) => {
     const game = new Chess(fen);
     if (game.isGameOver()) {
-        self.postMessage({ type: 'final', id, move: null });
+        self.postMessage({ type: 'final', id, move: null, score: evaluateBoard(game) });
         return;
     }
 
     const moves = game.moves({ verbose: true });
     if (moves.length === 0) {
-        self.postMessage({ type: 'final', id, move: null });
+        self.postMessage({ type: 'final', id, move: null, score: evaluateBoard(game) });
         return;
     }
     if (moves.length === 1) {
-        self.postMessage({ type: 'interim', id, variation: [moves[0].san] });
-        self.postMessage({ type: 'final', id, move: moves[0].san });
+        const move = moves[0].san;
+        game.move(move);
+        const score = evaluateBoard(game);
+        game.undo();
+        self.postMessage({ type: 'interim', id, variation: [move] });
+        self.postMessage({ type: 'final', id, move, score });
         return;
     }
 
@@ -198,7 +202,7 @@ const findBestMove = async (fen: string, depth: number, id: number, isPonder: bo
     }
     
     const finalMove = bestMove || moves[Math.floor(Math.random() * moves.length)].san;
-    self.postMessage({ type: 'final', id, move: finalMove });
+    self.postMessage({ type: 'final', id, move: finalMove, score: bestValue });
 };
 
 

@@ -1,7 +1,8 @@
 
 "use client";
 
-import type { Move, PieceSymbol } from 'chess.js';
+import { useState } from 'react';
+import type { Move } from 'chess.js';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import MoveHistory from './MoveHistory';
@@ -18,9 +19,19 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Input } from './ui/input';
 import { Slider } from './ui/slider';
 import { Switch } from './ui/switch';
 import { cn } from '@/lib/utils';
@@ -36,6 +47,9 @@ interface SidePanelProps {
   moveHistoryIndex: number;
   resetGame: () => void;
   setMoveHistoryIndex: (index: number) => void;
+  onResign: () => void;
+  onOfferDraw: () => void;
+  isOfferingDraw: boolean;
   depth: number;
   onDepthChange: (depth: number) => void;
   isThinking: boolean;
@@ -66,6 +80,9 @@ export default function SidePanel({
   moveHistoryIndex,
   resetGame,
   setMoveHistoryIndex,
+  onResign,
+  onOfferDraw,
+  isOfferingDraw,
   depth,
   onDepthChange,
   isThinking,
@@ -85,6 +102,7 @@ export default function SidePanel({
   showLastMove,
   onShowLastMoveChange,
 }: SidePanelProps) {
+  const [isResignDialogOpen, setIsResignDialogOpen] = useState(false);
 
   const formatTime = (timeInSeconds: number) => {
     const minutes = Math.floor(timeInSeconds / 60);
@@ -99,13 +117,13 @@ export default function SidePanel({
     
     const variationString = bestVariation?.map(m => m.san).join(' ');
 
-    if (isThinking) {
+    if (isThinking || isPondering) {
       return (
         <div className="flex w-full flex-col gap-2">
             <div className="flex flex-col gap-1 text-xs text-muted-foreground flex-grow">
                 <div className="flex items-center gap-1.5">
                     <Loader2 className="h-3 w-3 animate-spin" />
-                    <span className="font-medium">Thinking...</span>
+                    <span className="font-medium">{isThinking ? 'Thinking...' : 'Pondering...'}</span>
                 </div>
                 {variationString && (
                     <p className="font-mono ml-[1.125rem] break-all leading-tight">
@@ -118,23 +136,6 @@ export default function SidePanel({
       );
     }
     
-    if (isPondering) {
-       return (
-        <div className="flex w-full flex-col gap-2 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            <span className="font-medium">Pondering...</span>
-          </div>
-          <Progress value={progress} className="h-1 w-full" />
-          {variationString && (
-            <p className="font-mono ml-[1.125rem] break-all leading-tight">
-              {variationString}
-            </p>
-          )}
-        </div>
-      );
-    }
-
     if (turn === 'w' && !isViewingHistory) {
         return (
             <div className="flex items-center gap-1.5 text-muted-foreground">
@@ -281,6 +282,38 @@ export default function SidePanel({
         <Separator />
         <AiHint fen={fen} isGameOver={isGameOver} isViewingHistory={isViewingHistory} />
         <Separator />
+        <div className="flex items-center gap-2">
+            <Button
+                variant="outline"
+                className="w-full"
+                onClick={onOfferDraw}
+                disabled={isGameOver || isViewingHistory || turn === 'b' || isOfferingDraw}
+            >
+                {isOfferingDraw ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Offer Draw
+            </Button>
+            <AlertDialog open={isResignDialogOpen} onOpenChange={setIsResignDialogOpen}>
+                <AlertDialogTrigger asChild>
+                    <Button variant="destructive" className="w-full" disabled={isGameOver || isViewingHistory}>
+                        Resign
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure you want to resign?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action will end the game and count as a loss. This cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => { onResign(); setIsResignDialogOpen(false); }}>
+                            Confirm Resignation
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </div>
         <GameControls
           onReset={resetGame}
           onNavigate={setMoveHistoryIndex}
