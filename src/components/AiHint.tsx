@@ -63,7 +63,7 @@ export default function AiHint({ fen, isGameOver, isViewingHistory }: AiHintProp
     }
     
     // Use a fixed depth of 3 for hints for a good balance of speed and quality.
-    hintWorker.postMessage({ id, fen, depth: 3 });
+    hintWorker.postMessage({ type: 'start', id, fen, depth: 3, isPonderingAnimationEnabled: false });
   };
 
   return (

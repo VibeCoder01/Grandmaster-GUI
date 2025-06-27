@@ -8,7 +8,7 @@ import MoveHistory from './MoveHistory';
 import GameControls from './GameControls';
 import AiHint from './AiHint';
 import { Badge } from '@/components/ui/badge';
-import { Hourglass, Loader2, Settings } from 'lucide-react';
+import { Hourglass, Loader2, Play, Settings } from 'lucide-react';
 import { Button } from './ui/button';
 import {
   Dialog,
@@ -57,6 +57,7 @@ interface SidePanelProps {
   onShowLegalMoveDotsChange: (checked: boolean) => void;
   showLastMove: boolean;
   onShowLastMoveChange: (checked: boolean) => void;
+  onPlayNow: () => void;
 }
 
 export default function SidePanel({
@@ -89,6 +90,7 @@ export default function SidePanel({
   onShowLegalMoveDotsChange,
   showLastMove,
   onShowLastMoveChange,
+  onPlayNow,
 }: SidePanelProps) {
 
   const formatTime = (timeInSeconds: number) => {
@@ -106,17 +108,22 @@ export default function SidePanel({
 
     if (isThinking) {
       return (
-        <div className="flex w-full flex-col gap-2 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            <span className="font-medium">Thinking...</span>
-          </div>
+        <div className="flex w-full flex-col gap-2">
+            <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-col gap-1 text-xs text-muted-foreground flex-grow">
+                    <div className="flex items-center gap-1.5">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <span className="font-medium">Thinking...</span>
+                    </div>
+                    {variationString && (
+                        <p className="font-mono ml-[1.125rem] break-all leading-tight">
+                        {variationString}
+                        </p>
+                    )}
+                </div>
+                <Button onClick={onPlayNow} disabled={!bestVariation} size="sm" variant="secondary"><Play className="mr-2 h-4 w-4" />Play</Button>
+            </div>
           <Progress value={progress} className="h-1 w-full" />
-          {variationString && (
-            <p className="font-mono ml-[1.125rem] break-all leading-tight">
-              {variationString}
-            </p>
-          )}
         </div>
       );
     }
@@ -266,7 +273,7 @@ export default function SidePanel({
             <div className="flex justify-between items-center h-5">
               <div className="text-sm text-muted-foreground">White</div>
               <div className="flex flex-wrap gap-0.5 items-center justify-end">
-                {capturedByWhite.map((p, i) => <PieceImage key={i} pieceType={p} color="b" />)}
+                {capturedByBlack.map((p, i) => <PieceImage key={i} pieceType={p} color="w" />)}
               </div>
             </div>
             <div className="text-xl font-mono font-semibold">{formatTime(whiteTime)}</div>
@@ -275,7 +282,7 @@ export default function SidePanel({
             <div className="flex justify-between items-center h-5">
               <div className="text-sm text-muted-foreground">Black</div>
               <div className="flex flex-wrap gap-0.5 items-center justify-end">
-                {capturedByBlack.map((p, i) => <PieceImage key={i} pieceType={p} color="w" />)}
+                {capturedByWhite.map((p, i) => <PieceImage key={i} pieceType={p} color="b" />)}
               </div>
             </div>
             <div className="text-xl font-mono font-semibold">{formatTime(blackTime)}</div>
