@@ -21,13 +21,21 @@ type Action =
 
 function getStatus(game: Chess): string {
   if (game.isCheckmate()) return `Checkmate - ${game.turn() === 'w' ? 'Black' : 'White'} wins`;
-  if (game.isDraw()) return 'Draw';
-  if (game.isStalemate()) return 'Stalemate';
-  if (game.isThreefoldRepetition()) return 'Threefold Repetition';
-  if (game.isInsufficientMaterial()) return 'Insufficient Material';
+
+  // Handle specific draw conditions first for clearer messaging.
+  if (game.isStalemate()) return 'Draw by Stalemate';
+  if (game.isThreefoldRepetition()) return 'Draw by Threefold Repetition';
+  if (game.isInsufficientMaterial()) return 'Draw by Insufficient Material';
+  
+  // chess.js's isDraw() will be true for the above conditions, but also for the 50-move rule.
+  // By placing this check last, we can infer it's the 50-move rule if the others haven't been met.
+  if (game.isDraw()) return 'Draw by 50-move Rule';
+
   if (game.isCheck()) return 'Check';
+  
   return 'In Progress';
 }
+
 
 function createInitialState(timeControl: number): GameState {
     const game = new Chess();
