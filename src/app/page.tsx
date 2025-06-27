@@ -70,7 +70,7 @@ export default function GrandmasterGuiPage() {
 
         const handleVariation = (variationData: string[], isBest: boolean) => {
              const searchFen = searchFenMapRef.current.get(id);
-             if (!searchFen || (isBest && isPonder)) return;
+             if (!searchFen) return;
 
              const tempGame = new Chess(searchFen);
              const moveObjects: Move[] = [];
@@ -198,13 +198,11 @@ export default function GrandmasterGuiPage() {
         if (isCancelled || new Chess(fen).turn() !== 'w') return;
         
         setIsPondering(true);
-        setBestVariation(null);
         setProgress(0);
         ponderCache.current.clear();
 
         const rootGame = new Chess(fen);
         const legalMoves = rootGame.moves({ verbose: true });
-        let ponderJobsCompleted = 0;
         
         for (const move of legalMoves) {
             if (isCancelled) break;
@@ -218,9 +216,9 @@ export default function GrandmasterGuiPage() {
             if (isCancelled) break;
             ponderCache.current.set(fenAfterMove, counterMove);
             
-            ponderJobsCompleted++;
+            const progress = Math.round(((legalMoves.indexOf(move) + 1) / legalMoves.length) * 100);
             if (!isCancelled) {
-              setProgress(Math.round((ponderJobsCompleted / legalMoves.length) * 100));
+              setProgress(progress);
             }
         }
 
