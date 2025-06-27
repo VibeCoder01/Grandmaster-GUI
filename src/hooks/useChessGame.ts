@@ -17,10 +17,11 @@ type Action =
   | { type: 'MOVE'; move: string | { from: Square; to: Square; promotion?: string } }
   | { type: 'SET_HISTORY_INDEX'; index: number }
   | { type: 'RESET'; timeControl: number }
-  | { type: 'TICK' };
+  | { type: 'TICK' }
+  | { type: 'LOAD_GAME'; state: GameState };
 
 function getStatus(game: Chess): string {
-  if (game.isCheckmate()) return 'Checkmate';
+  if (game.isCheckmate()) return `Checkmate - ${game.turn() === 'w' ? 'Black' : 'White'} wins`;
   if (game.isDraw()) return 'Draw';
   if (game.isStalemate()) return 'Stalemate';
   if (game.isThreefoldRepetition()) return 'Threefold Repetition';
@@ -50,12 +51,15 @@ function gameReducer(state: GameState, action: Action): GameState {
       try {
         const moveResult = game.move(action.move);
         if (!moveResult) return state; // Illegal move
+        
         const newHistory = [...state.history, moveResult];
+        const isTimeout = state.whiteTime <= 0 || state.blackTime <= 0;
+        
         return {
           ...state,
           fen: game.fen(),
           history: newHistory,
-          isGameOver: game.isGameOver(),
+          isGameOver: game.isGameOver() || isTimeout,
           moveHistoryIndex: newHistory.length,
         };
       } catch (e) {
@@ -98,12 +102,14 @@ function gameReducer(state: GameState, action: Action): GameState {
         isGameOver: state.isGameOver || isTimeout,
       };
     }
+    case 'LOAD_GAME':
+      return action.state;
     default:
       return state;
   }
 }
 
-export function useChessGame(initialTimeControl: number = 300) {
+export function useChessGame(initialTimeControl: number = 600) {
   const [state, dispatch] = useReducer(gameReducer, initialTimeControl, createInitialState);
 
   useEffect(() => {
@@ -130,14 +136,31 @@ export function useChessGame(initialTimeControl: number = 300) {
   const setMoveHistoryIndex = useCallback((index: number) => {
     dispatch({ type: 'SET_HISTORY_INDEX', index });
   }, []);
+
+  const loadGame = useCallback((newState: GameState) => {
+    dispatch({ type: 'LOAD_GAME', state: newState });
+  }, []);
   
-  const game = useMemo(() => new Chess(state.fen), [state.fen]);
+  const game = useMemo(() => {
+    // When loading a game, fen might be out of sync with history momentarily.
+    // Reconstruct game from history for consistency.
+    const g = new Chess();
+    try {
+      state.history.slice(0, state.moveHistoryIndex).forEach(m => g.move(m.san));
+    } catch(e) {
+      console.error("Error replaying history", e);
+      // Fallback to FEN if history is broken
+      return new Chess(state.fen);
+    }
+    return g;
+  }, [state.fen, state.history, state.moveHistoryIndex]);
 
   const status = useMemo(() => {
     if (state.whiteTime <= 0) return 'Black wins on time';
     if (state.blackTime <= 0) return 'White wins on time';
-    return getStatus(game);
-  }, [state.whiteTime, state.blackTime, game]);
+    const g = new Chess(state.fen);
+    return getStatus(g);
+  }, [state.whiteTime, state.blackTime, state.fen]);
 
   const lastMove = useMemo(() => {
     if (state.moveHistoryIndex > 0) {
@@ -167,7 +190,8 @@ export function useChessGame(initialTimeControl: number = 300) {
   }, [state.history]);
 
   return {
-    fen: state.fen,
+    gameState: state,
+    fen: game.fen(),
     board: game.board(),
     turn: game.turn(),
     status,
@@ -183,5 +207,6 @@ export function useChessGame(initialTimeControl: number = 300) {
     makeMove,
     resetGame,
     setMoveHistoryIndex,
+    loadGame,
   };
 }

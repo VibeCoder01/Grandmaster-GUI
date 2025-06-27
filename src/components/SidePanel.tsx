@@ -8,7 +8,7 @@ import MoveHistory from './MoveHistory';
 import GameControls from './GameControls';
 import AiHint from './AiHint';
 import { Badge } from '@/components/ui/badge';
-import { Hourglass, Loader2, Play, Settings } from 'lucide-react';
+import { Hourglass, Loader2, Play, Settings, Save, FolderOpen } from 'lucide-react';
 import { Button } from './ui/button';
 import {
   Dialog,
@@ -58,6 +58,10 @@ interface SidePanelProps {
   showLastMove: boolean;
   onShowLastMoveChange: (checked: boolean) => void;
   onPlayNow: () => void;
+  humanPlayerName: string;
+  onPlayerNameChange: (name: string) => void;
+  onSaveGame: () => void;
+  onLoadGame: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 export default function SidePanel({
@@ -91,6 +95,10 @@ export default function SidePanel({
   showLastMove,
   onShowLastMoveChange,
   onPlayNow,
+  humanPlayerName,
+  onPlayerNameChange,
+  onSaveGame,
+  onLoadGame,
 }: SidePanelProps) {
 
   const formatTime = (timeInSeconds: number) => {
@@ -169,10 +177,19 @@ export default function SidePanel({
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Engine Settings</DialogTitle>
+                <DialogTitle>Game & Engine Settings</DialogTitle>
                 <DialogDescription>Configure the chess engine and game settings.</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
+                <div className='space-y-2'>
+                    <Label htmlFor="player-name">Your Name</Label>
+                    <Input
+                        id="player-name"
+                        value={humanPlayerName}
+                        onChange={(e) => onPlayerNameChange(e.target.value)}
+                    />
+                </div>
+                <Separator/>
                 <div className='space-y-2'>
                     <Label htmlFor="time-control">Time Control</Label>
                     <Select value={timeControl.toString()} onValueChange={(v) => onTimeControlChange(parseInt(v, 10))}>
@@ -271,18 +288,18 @@ export default function SidePanel({
         <div className="grid grid-cols-2 gap-2 text-center">
           <div className={cn("p-2 rounded-lg bg-card text-card-foreground space-y-1", turn === 'w' && !isGameOver && "ring-2 ring-accent")}>
             <div className="flex justify-between items-center h-5">
-              <div className="text-sm text-muted-foreground">White</div>
+              <div className="text-sm text-muted-foreground">White ({humanPlayerName})</div>
               <div className="flex flex-wrap gap-0.5 items-center justify-end">
-                {capturedByBlack.map((p, i) => <PieceImage key={i} pieceType={p} color="w" />)}
+                {capturedByWhite.map((p, i) => <PieceImage key={i} pieceType={p} color="b" />)}
               </div>
             </div>
             <div className="text-xl font-mono font-semibold">{formatTime(whiteTime)}</div>
           </div>
           <div className={cn("p-2 rounded-lg bg-card text-card-foreground space-y-1", turn === 'b' && !isGameOver && "ring-2 ring-accent")}>
             <div className="flex justify-between items-center h-5">
-              <div className="text-sm text-muted-foreground">Black</div>
+              <div className="text-sm text-muted-foreground">Black (Engine)</div>
               <div className="flex flex-wrap gap-0.5 items-center justify-end">
-                {capturedByWhite.map((p, i) => <PieceImage key={i} pieceType={p} color="b" />)}
+                {capturedByBlack.map((p, i) => <PieceImage key={i} pieceType={p} color="w" />)}
               </div>
             </div>
             <div className="text-xl font-mono font-semibold">{formatTime(blackTime)}</div>
@@ -300,6 +317,16 @@ export default function SidePanel({
         </div>
         <Separator />
         <AiHint fen={fen} isGameOver={isGameOver} isViewingHistory={isViewingHistory} />
+        <Separator />
+        <div className="space-y-2">
+            <Button onClick={onSaveGame} className="w-full">
+                <Save className="mr-2 h-4 w-4" /> Save Game
+            </Button>
+            <Button onClick={() => document.getElementById('load-game-input')?.click()} className="w-full" variant="outline">
+                <FolderOpen className="mr-2 h-4 w-4" /> Load Game
+            </Button>
+            <input type="file" id="load-game-input" accept=".json" className="hidden" onChange={onLoadGame} />
+        </div>
         <Separator />
         <GameControls
           onReset={resetGame}

@@ -43,7 +43,7 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
   const [showCheckmate, setShowCheckmate] = useState(false);
   const [attackedSquares, setAttackedSquares] = useState<Square[]>([]);
 
-  const isCheckmate = useMemo(() => isGameOver && status === 'Checkmate', [isGameOver, status]);
+  const isCheckmate = useMemo(() => isGameOver && status.startsWith('Checkmate'), [isGameOver, status]);
 
   useEffect(() => {
     if (isCheckmate) {
@@ -365,10 +365,10 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
                   return null;
               })}
 
-               <span className="absolute bottom-1 left-1 text-xs font-bold text-primary-foreground/50 select-none">
+               <span className="absolute top-1 left-1 text-xs font-bold text-primary-foreground/50 select-none">
                 {colIndex === 0 && rank}
               </span>
-              <span className="absolute top-1 right-1 text-xs font-bold text-primary-foreground/50 select-none">
+              <span className="absolute bottom-1 right-1 text-xs font-bold text-primary-foreground/50 select-none">
                 {rowIndex === 7 && file}
               </span>
             </div>
@@ -379,7 +379,7 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
       {(showCheckmate || showCheck) && (
         <div className="absolute inset-0 bg-black/50 flex items-center justify-center pointer-events-none z-30">
           <div className="text-white text-4xl lg:text-6xl font-bold drop-shadow-lg animate-in fade-in zoom-in-50">
-            {showCheckmate ? `Checkmate! ${turn === 'w' ? 'Black' : 'White'} wins.` : "Check"}
+            {showCheckmate ? status : "Check"}
           </div>
         </div>
       )}
