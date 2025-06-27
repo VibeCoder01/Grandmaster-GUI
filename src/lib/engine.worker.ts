@@ -169,9 +169,7 @@ const findBestMove = async (fen: string, depth: number, id: number, isPonder: bo
         game.undo();
         
         const exploredVariation = [move.san, ...result.pv];
-        if (!isPonder) {
-            self.postMessage({ type: 'exploring', id, variation: exploredVariation });
-        }
+        self.postMessage({ type: 'exploring', id, variation: exploredVariation });
 
         const boardValue = result.score;
         if (isMaximizingPlayer) {
