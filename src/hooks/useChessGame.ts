@@ -55,7 +55,9 @@ function createInitialState(timeControl: number): GameState {
 function gameReducer(state: GameState, action: Action): GameState {
   switch (action.type) {
     case 'MOVE': {
-      if (state.moveHistoryIndex !== state.history.length) return state;
+      if (state.isGameOver || state.moveHistoryIndex !== state.history.length) {
+        return state;
+      }
 
       const game = new Chess(state.fen);
       try {
