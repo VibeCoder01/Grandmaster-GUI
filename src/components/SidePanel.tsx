@@ -55,6 +55,8 @@ interface SidePanelProps {
   capturedByBlack: PieceSymbol[];
   showLegalMoveDots: boolean;
   onShowLegalMoveDotsChange: (checked: boolean) => void;
+  showLastMove: boolean;
+  onShowLastMoveChange: (checked: boolean) => void;
 }
 
 export default function SidePanel({
@@ -85,6 +87,8 @@ export default function SidePanel({
   capturedByBlack,
   showLegalMoveDots,
   onShowLegalMoveDotsChange,
+  showLastMove,
+  onShowLastMoveChange,
 }: SidePanelProps) {
 
   const formatTime = (timeInSeconds: number) => {
@@ -233,6 +237,19 @@ export default function SidePanel({
                         id="legal-move-dots"
                         checked={showLegalMoveDots}
                         onCheckedChange={onShowLegalMoveDotsChange}
+                    />
+                </div>
+                <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                        <Label htmlFor="last-move-indicator">Show Last Move</Label>
+                        <p className="text-sm text-muted-foreground">
+                            Highlight the previous move on the board.
+                        </p>
+                    </div>
+                    <Switch
+                        id="last-move-indicator"
+                        checked={showLastMove}
+                        onCheckedChange={onShowLastMoveChange}
                     />
                 </div>
                 <Separator />

@@ -38,6 +38,7 @@ export default function GrandmasterGuiPage() {
   const [isPonderingAnimationEnabled, setIsPonderingAnimationEnabled] = useState(true);
   const [progress, setProgress] = useState(0);
   const [showLegalMoveDots, setShowLegalMoveDots] = useState(true);
+  const [showLastMove, setShowLastMove] = useState(true);
 
   const workerRef = useRef<Worker | null>(null);
   const nextRequestId = useRef(0);
@@ -125,7 +126,7 @@ export default function GrandmasterGuiPage() {
                 currentSearchId.current = null;
             } else if (isPonder) {
                 setExploredVariation(null);
-                // Don't clear best variation during ponder, it causes flicker
+                setBestVariation(null);
             }
         }
     };
@@ -216,7 +217,7 @@ export default function GrandmasterGuiPage() {
               setProgress(progress);
             }
             
-            await new Promise(resolve => setTimeout(resolve, 0)); // Yield to event loop
+            await new Promise(resolve => setTimeout(resolve, 0));
             if (isCancelled) break;
 
             const gameForMove = new Chess(fen);
@@ -277,6 +278,7 @@ export default function GrandmasterGuiPage() {
         isPondering={isPondering}
         status={status}
         showLegalMoveDots={showLegalMoveDots}
+        showLastMove={showLastMove}
       />
       <SidePanel
         status={status}
@@ -306,6 +308,8 @@ export default function GrandmasterGuiPage() {
         capturedByBlack={capturedByBlack}
         showLegalMoveDots={showLegalMoveDots}
         onShowLegalMoveDotsChange={setShowLegalMoveDots}
+        showLastMove={showLastMove}
+        onShowLastMoveChange={setShowLastMove}
       />
     </main>
   );

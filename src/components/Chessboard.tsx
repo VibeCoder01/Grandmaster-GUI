@@ -20,6 +20,7 @@ interface ChessboardProps {
   isPondering: boolean;
   status: string;
   showLegalMoveDots: boolean;
+  showLastMove: boolean;
 }
 
 const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
@@ -30,7 +31,7 @@ type AnimatedPiece = Piece & {
     to: Square;
 };
 
-export default function Chessboard({ board, onMove, turn, isGameOver, isViewingHistory, lastMove, fen, visualizedVariation, isThinking, isPondering, status, showLegalMoveDots }: ChessboardProps) {
+export default function Chessboard({ board, onMove, turn, isGameOver, isViewingHistory, lastMove, fen, visualizedVariation, isThinking, isPondering, status, showLegalMoveDots, showLastMove }: ChessboardProps) {
   const [draggedPiece, setDraggedPiece] = useState<Piece | null>(null);
   const [legalMoves, setLegalMoves] = useState<Square[]>([]);
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
@@ -305,10 +306,10 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
                   {piece && <div className="absolute inset-1 border-4 border-accent/50 rounded-sm" />}
                 </div>
               )}
-              {isFromSquare && !selectedSquare && (
+              {showLastMove && isFromSquare && !selectedSquare && (
                 <div className="absolute w-full h-full bg-accent/30 pointer-events-none" />
               )}
-              {isToSquare && !selectedSquare && (
+              {showLastMove && isToSquare && !selectedSquare && (
                 <div className="absolute w-full h-full bg-accent/40 pointer-events-none" />
               )}
               
