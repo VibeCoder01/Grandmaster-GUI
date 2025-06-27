@@ -53,6 +53,8 @@ interface SidePanelProps {
   onTimeControlChange: (value: number) => void;
   capturedByWhite: PieceSymbol[];
   capturedByBlack: PieceSymbol[];
+  showLegalMoveDots: boolean;
+  onShowLegalMoveDotsChange: (checked: boolean) => void;
 }
 
 export default function SidePanel({
@@ -80,7 +82,9 @@ export default function SidePanel({
   timeControl,
   onTimeControlChange,
   capturedByWhite,
-  capturedByBlack
+  capturedByBlack,
+  showLegalMoveDots,
+  onShowLegalMoveDotsChange,
 }: SidePanelProps) {
 
   const formatTime = (timeInSeconds: number) => {
@@ -215,6 +219,20 @@ export default function SidePanel({
                         checked={isPonderingAnimationEnabled}
                         onCheckedChange={onPonderingAnimationEnabledChange}
                         disabled={!isPonderingEnabled}
+                    />
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                        <Label htmlFor="legal-move-dots">Show Legal Move Dots</Label>
+                        <p className="text-sm text-muted-foreground">
+                            Display dots for valid moves.
+                        </p>
+                    </div>
+                    <Switch
+                        id="legal-move-dots"
+                        checked={showLegalMoveDots}
+                        onCheckedChange={onShowLegalMoveDotsChange}
                     />
                 </div>
                 <Separator />

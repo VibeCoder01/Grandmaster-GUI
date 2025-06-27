@@ -37,6 +37,7 @@ export default function GrandmasterGuiPage() {
   const [isPonderingEnabled, setIsPonderingEnabled] = useState(true);
   const [isPonderingAnimationEnabled, setIsPonderingAnimationEnabled] = useState(true);
   const [progress, setProgress] = useState(0);
+  const [showLegalMoveDots, setShowLegalMoveDots] = useState(true);
 
   const workerRef = useRef<Worker | null>(null);
   const nextRequestId = useRef(0);
@@ -122,6 +123,9 @@ export default function GrandmasterGuiPage() {
 
             if (!isPonder && id === currentSearchId.current) {
                 currentSearchId.current = null;
+            } else if (isPonder) {
+                setExploredVariation(null);
+                // Don't clear best variation during ponder, it causes flicker
             }
         }
     };
@@ -206,6 +210,14 @@ export default function GrandmasterGuiPage() {
         
         for (const move of legalMoves) {
             if (isCancelled) break;
+            
+            const progress = Math.round(((legalMoves.indexOf(move) + 1) / legalMoves.length) * 100);
+            if (!isCancelled) {
+              setProgress(progress);
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 0)); // Yield to event loop
+            if (isCancelled) break;
 
             const gameForMove = new Chess(fen);
             gameForMove.move(move.san);
@@ -215,11 +227,6 @@ export default function GrandmasterGuiPage() {
             
             if (isCancelled) break;
             ponderCache.current.set(fenAfterMove, counterMove);
-            
-            const progress = Math.round(((legalMoves.indexOf(move) + 1) / legalMoves.length) * 100);
-            if (!isCancelled) {
-              setProgress(progress);
-            }
         }
 
         if (!isCancelled) {
@@ -268,6 +275,8 @@ export default function GrandmasterGuiPage() {
         visualizedVariation={exploredVariation}
         isThinking={isThinking}
         isPondering={isPondering}
+        status={status}
+        showLegalMoveDots={showLegalMoveDots}
       />
       <SidePanel
         status={status}
@@ -295,6 +304,8 @@ export default function GrandmasterGuiPage() {
         onTimeControlChange={setTimeControl}
         capturedByWhite={capturedByWhite}
         capturedByBlack={capturedByBlack}
+        showLegalMoveDots={showLegalMoveDots}
+        onShowLegalMoveDotsChange={setShowLegalMoveDots}
       />
     </main>
   );

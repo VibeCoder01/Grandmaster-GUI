@@ -18,6 +18,8 @@ interface ChessboardProps {
   visualizedVariation?: Move[] | null;
   isThinking: boolean;
   isPondering: boolean;
+  status: string;
+  showLegalMoveDots: boolean;
 }
 
 const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
@@ -28,15 +30,24 @@ type AnimatedPiece = Piece & {
     to: Square;
 };
 
-export default function Chessboard({ board, onMove, turn, isGameOver, isViewingHistory, lastMove, fen, visualizedVariation, isThinking, isPondering }: ChessboardProps) {
+export default function Chessboard({ board, onMove, turn, isGameOver, isViewingHistory, lastMove, fen, visualizedVariation, isThinking, isPondering, status, showLegalMoveDots }: ChessboardProps) {
   const [draggedPiece, setDraggedPiece] = useState<Piece | null>(null);
   const [legalMoves, setLegalMoves] = useState<Square[]>([]);
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
-
   const [animatedPiece, setAnimatedPiece] = useState<AnimatedPiece | null>(null);
   const [animatedStyle, setAnimatedStyle] = useState<React.CSSProperties>({});
   const [squareSize, setSquareSize] = useState(64);
   const boardRef = useRef<HTMLDivElement>(null);
+  const [showCheck, setShowCheck] = useState(false);
+  const [attackedSquares, setAttackedSquares] = useState<Square[]>([]);
+
+  useEffect(() => {
+    if (status === 'Check' && !isGameOver) {
+      setShowCheck(true);
+      const timer = setTimeout(() => setShowCheck(false), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [status, isGameOver, fen]);
 
   useEffect(() => {
     function updateSquareSize() {
@@ -58,7 +69,7 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
     const pieceToAnimate: AnimatedPiece = {
       type: lastMove.piece,
       color: lastMove.color,
-      square: lastMove.from, // required by Piece type
+      square: lastMove.from,
       from: lastMove.from,
       to: lastMove.to,
     };
@@ -99,7 +110,7 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
     const img = new Image();
     e.dataTransfer.setDragImage(img, 0, 0);
     setDraggedPiece(piece);
-    setSelectedSquare(null); // Clear click selection
+    setSelectedSquare(null);
 
     const game = new Chess(fen);
     const moves = game.moves({ square: piece.square, verbose: true });
@@ -109,10 +120,12 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
   const handleDragEnd = () => {
     setDraggedPiece(null);
     setLegalMoves([]);
+    setAttackedSquares([]);
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>, toSquare: Square) => {
     e.preventDefault();
+    setAttackedSquares([]);
     if (!draggedPiece || !legalMoves.includes(toSquare) || draggedPiece.square === toSquare) {
       return;
     }
@@ -132,12 +145,35 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
     }
 
     onMove(move);
-    setLegalMoves([]); // Clear highlights immediately on drop.
+    setLegalMoves([]);
     setSelectedSquare(null);
   };
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>, toSquare: Square) => {
     e.preventDefault();
+    if (!draggedPiece) {
+        if (attackedSquares.length > 0) setAttackedSquares([]);
+        return;
+    }
+
+    const game = new Chess(fen);
+    const isLegal = game.moves({ square: draggedPiece.square, verbose: true }).some(m => m.to === toSquare);
+    
+    if (isLegal) {
+        const tempGame = new Chess(fen);
+        tempGame.move({ from: draggedPiece.square, to: toSquare, promotion: 'q' });
+        
+        const movesFromNewPos = tempGame.moves({ square: toSquare, verbose: true });
+        const squaresUnderAttack = movesFromNewPos.filter(m => m.captured).map(m => m.to);
+        
+        if (attackedSquares.length !== squaresUnderAttack.length || !squaresUnderAttack.every(sq => attackedSquares.includes(sq))) {
+            setAttackedSquares(squaresUnderAttack);
+        }
+    } else {
+        if (attackedSquares.length > 0) {
+            setAttackedSquares([]);
+        }
+    }
   };
   
   const handleSquareClick = (square: Square) => {
@@ -145,16 +181,13 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
 
     const game = new Chess(fen);
     
-    // If a square is already selected (this is the second click)
     if (selectedSquare) {
-        // If we click the same square again, deselect it
         if (square === selectedSquare) {
             setSelectedSquare(null);
             setLegalMoves([]);
             return;
         }
 
-        // Check if the move is legal
         const legalMove = game.moves({ square: selectedSquare, verbose: true }).find(m => m.to === square);
 
         if (legalMove) {
@@ -174,20 +207,17 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
             setSelectedSquare(null);
             setLegalMoves([]);
         } else {
-            // The move is not legal. Let's see if we're clicking another of our own pieces.
             const pieceOnClickedSquare = game.get(square);
             if (pieceOnClickedSquare && pieceOnClickedSquare.color === turn) {
-                // It's another of our pieces, so we select it instead.
                 setSelectedSquare(square);
                 const newMoves = game.moves({ square: square, verbose: true });
                 setLegalMoves(newMoves.map(m => m.to));
             } else {
-                // Invalid move, so deselect everything.
                 setSelectedSquare(null);
                 setLegalMoves([]);
             }
         }
-    } else { // This is the first click
+    } else { 
         const piece = game.get(square);
         if (piece && piece.color === turn) {
             setSelectedSquare(square);
@@ -217,21 +247,22 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
       };
 
       if (isPondering) {
-          // A cool, deep blue tint for pondering.
           style.filter = 'sepia(80%) hue-rotate(180deg) saturate(500%) brightness(0.7)';
       } else if (isThinking) {
-          // A warm, intense red tint for thinking.
           style.filter = 'sepia(80%) hue-rotate(330deg) saturate(600%) brightness(0.8)';
       }
       
       return style;
   };
 
+  const isCheckmate = isGameOver && status === 'Checkmate';
+
   return (
     <div
       ref={boardRef}
       className="grid grid-cols-8 grid-rows-8 border-4 border-card shadow-2xl rounded-lg aspect-square relative"
       style={{ width: 'clamp(320px, 90vmin, 512px)', height: 'clamp(320px, 90vmin, 512px)' }}
+      onMouseLeave={() => setAttackedSquares([])}
     >
       {ranks.map((rank, rowIndex) =>
         files.map((file, colIndex) => {
@@ -249,12 +280,14 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
           const isAnimatingTo = animatedPiece?.to === square;
           const isPieceHiddenForAnimation = isAnimatingFrom || isAnimatingTo;
 
+          const isAttackedOnHover = attackedSquares.includes(square);
+
           return (
             <div
               key={square}
               onClick={() => handleSquareClick(square)}
               onDrop={(e) => handleDrop(e, square)}
-              onDragOver={handleDragOver}
+              onDragOver={(e) => handleDragOver(e, square)}
               className={cn(
                 'w-full h-full flex items-center justify-center relative transition-colors duration-200 cursor-pointer',
                 isLight ? 'bg-secondary' : 'bg-primary',
@@ -262,17 +295,19 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
                 isSelectedSquare && 'bg-accent/40'
               )}
             >
-              {isLegalMove && (
+              {isAttackedOnHover && piece && <div className="absolute inset-0.5 rounded-sm bg-destructive/60 z-10 pointer-events-none" />}
+              
+              {isLegalMove && showLegalMoveDots && (
                 <div className="absolute w-full h-full flex items-center justify-center pointer-events-none">
                   {!piece && <div className="w-1/3 h-1/3 bg-accent/50 rounded-full" />}
-                  {piece && <div className="absolute inset-1 border-4 border-accent/50 rounded-full" />}
+                  {piece && <div className="absolute inset-1 border-4 border-accent/50 rounded-sm" />}
                 </div>
               )}
               {isFromSquare && !selectedSquare && (
-                <div className="absolute w-1/3 h-1/3 bg-accent/50 rounded-full pointer-events-none" />
+                <div className="absolute w-full h-full bg-accent/30 pointer-events-none" />
               )}
               {isToSquare && !selectedSquare && (
-                <div className="absolute inset-1 border-4 border-accent/50 rounded-full pointer-events-none" />
+                <div className="absolute w-full h-full bg-accent/40 pointer-events-none" />
               )}
               
               {piece && (
@@ -327,6 +362,14 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
             </div>
           );
         })
+      )}
+
+      {(isCheckmate || showCheck) && (
+        <div className="absolute inset-0 bg-black/50 flex items-center justify-center pointer-events-none z-30">
+          <div className="text-white text-4xl lg:text-6xl font-bold drop-shadow-lg animate-in fade-in zoom-in-50">
+            {isCheckmate ? "Checkmate" : "Check"}
+          </div>
+        </div>
       )}
 
       {animatedPiece && squareSize > 0 && (
