@@ -49,6 +49,7 @@ export default function GrandmasterGuiPage() {
 
   const handleResetGame = useCallback(() => {
     resetGame(timeControl);
+    setBestVariation(null);
   }, [resetGame, timeControl]);
 
   useEffect(() => {
@@ -128,7 +129,6 @@ export default function GrandmasterGuiPage() {
                 if (isPonderingAnimationEnabled) {
                     setExploredVariation(null);
                 }
-                 setBestVariation(null);
             }
         }
     };
@@ -149,7 +149,6 @@ export default function GrandmasterGuiPage() {
     searchFenMapRef.current.set(id, fen);
 
     if (!options.isPonder) {
-      setBestVariation(null);
       setExploredVariation(null);
       
       if (currentSearchId.current !== null && pendingRequests.current.has(currentSearchId.current)) {
@@ -181,14 +180,12 @@ export default function GrandmasterGuiPage() {
         const makeEngineMove = async () => {
           setIsThinking(true);
           setProgress(0);
-          setBestVariation(null);
           const result = await requestBestMove(fen, depth, { isPonder: false });
           if (result && result.move) {
             makeMove(result.move);
           }
           setIsThinking(false);
           setProgress(0);
-          setBestVariation(null);
         };
         makeEngineMove();
       }
@@ -207,7 +204,6 @@ export default function GrandmasterGuiPage() {
         
         setIsPondering(true);
         setProgress(0);
-        setBestVariation(null);
         ponderCache.current.clear();
 
         const rootGame = new Chess(fen);
@@ -238,7 +234,6 @@ export default function GrandmasterGuiPage() {
           setIsPondering(false);
           setExploredVariation(null);
           setProgress(0);
-          setBestVariation(null);
         }
       };
       
@@ -252,7 +247,6 @@ export default function GrandmasterGuiPage() {
       setIsPondering(false);
       setProgress(0);
       setExploredVariation(null);
-      setBestVariation(null);
     };
   }, [turn, fen, isGameOver, isViewingHistory, depth, requestBestMove, isPonderingEnabled]);
   
