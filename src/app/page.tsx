@@ -5,7 +5,6 @@ import Chessboard from "@/components/Chessboard";
 import SidePanel from "@/components/SidePanel";
 import { useChessGame } from "@/hooks/useChessGame";
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useToast } from "@/hooks/use-toast";
 import { Chess, type Move } from "chess.js";
 
 export default function GrandmasterGuiPage() {
@@ -28,7 +27,6 @@ export default function GrandmasterGuiPage() {
     setMoveHistoryIndex,
   } = useChessGame(timeControl);
 
-  const { toast } = useToast();
   const [depth, setDepth] = useState(2);
   const [isThinking, setIsThinking] = useState(false);
   const [isPondering, setIsPondering] = useState(false);
@@ -125,8 +123,9 @@ export default function GrandmasterGuiPage() {
             if (!isPonder && id === currentSearchId.current) {
                 currentSearchId.current = null;
             } else if (isPonder) {
-                setExploredVariation(null);
-                setBestVariation(null);
+                if (isPonderingAnimationEnabled) {
+                    setExploredVariation(null);
+                }
             }
         }
     };
@@ -204,6 +203,7 @@ export default function GrandmasterGuiPage() {
         
         setIsPondering(true);
         setProgress(0);
+        setBestVariation(null);
         ponderCache.current.clear();
 
         const rootGame = new Chess(fen);
@@ -250,16 +250,6 @@ export default function GrandmasterGuiPage() {
       setBestVariation(null);
     };
   }, [turn, fen, isGameOver, isViewingHistory, depth, requestBestMove, isPonderingEnabled]);
-
-
-  useEffect(() => {
-    if(isGameOver) {
-      toast({
-        title: "Game Over",
-        description: status,
-      })
-    }
-  }, [isGameOver, status, toast]);
 
   const lastMove = moveHistoryIndex > 0 && history.length >= moveHistoryIndex ? history[moveHistoryIndex - 1] : undefined;
 

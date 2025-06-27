@@ -40,7 +40,18 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
   const [squareSize, setSquareSize] = useState(64);
   const boardRef = useRef<HTMLDivElement>(null);
   const [showCheck, setShowCheck] = useState(false);
+  const [showCheckmate, setShowCheckmate] = useState(false);
   const [attackedSquares, setAttackedSquares] = useState<Square[]>([]);
+
+  const isCheckmate = useMemo(() => isGameOver && status === 'Checkmate', [isGameOver, status]);
+
+  useEffect(() => {
+    if (isCheckmate) {
+      setShowCheckmate(true);
+      const timer = setTimeout(() => setShowCheckmate(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [isCheckmate]);
 
   useEffect(() => {
     if (status === 'Check' && !isGameOver) {
@@ -258,8 +269,6 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
       return style;
   };
 
-  const isCheckmate = isGameOver && status === 'Checkmate';
-
   return (
     <div
       ref={boardRef}
@@ -367,10 +376,10 @@ export default function Chessboard({ board, onMove, turn, isGameOver, isViewingH
         })
       )}
 
-      {(isCheckmate || showCheck) && (
+      {(showCheckmate || showCheck) && (
         <div className="absolute inset-0 bg-black/50 flex items-center justify-center pointer-events-none z-30">
           <div className="text-white text-4xl lg:text-6xl font-bold drop-shadow-lg animate-in fade-in zoom-in-50">
-            {isCheckmate ? `Checkmate! ${turn === 'w' ? 'Black' : 'White'} wins.` : "Check"}
+            {showCheckmate ? `Checkmate! ${turn === 'w' ? 'Black' : 'White'} wins.` : "Check"}
           </div>
         </div>
       )}
