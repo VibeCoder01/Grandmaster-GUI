@@ -282,7 +282,7 @@ export default function GrandmasterGuiPage() {
   return (
     <div className="h-full w-full">
       <main className="flex h-full flex-col lg:flex-row p-4 lg:p-8 bg-background gap-8">
-        <div className="flex-1 min-w-0 min-h-0 relative">
+        <div className="flex-1 min-w-0 min-h-0 flex items-center justify-center">
           <Chessboard
             board={board}
             onMove={makeMove}
